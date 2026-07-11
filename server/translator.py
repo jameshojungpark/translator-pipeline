@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 MODEL = "gemini-3.5-flash"
 MAX_ATTEMPTS = 4
+# 429: rate limit; 500/503/504: transient server-side failures ("high demand").
+RETRYABLE_CODES = {429, 500, 503, 504}
 
 
 def _retry_delay_seconds(error: errors.APIError) -> float | None:
@@ -37,7 +39,7 @@ class Translator:
         )
 
     async def translate(self, sentence: str) -> str:
-        """Translate one sentence, retrying on rate limits (429)."""
+        """Translate one sentence, retrying on rate limits and transient 5xx."""
         backoff = 1.0
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
@@ -48,12 +50,12 @@ class Translator:
                 )
                 return (response.text or "").strip()
             except errors.APIError as error:
-                if error.code != 429 or attempt == MAX_ATTEMPTS:
+                if error.code not in RETRYABLE_CODES or attempt == MAX_ATTEMPTS:
                     raise
                 wait = _retry_delay_seconds(error) or backoff
                 logger.warning(
-                    "rate limited (attempt %d/%d), retrying in %.1fs",
-                    attempt, MAX_ATTEMPTS, wait,
+                    "retryable API error %s (attempt %d/%d), retrying in %.1fs",
+                    error.code, attempt, MAX_ATTEMPTS, wait,
                 )
                 await asyncio.sleep(wait)
                 backoff *= 2
