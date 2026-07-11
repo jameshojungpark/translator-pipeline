@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Sermon Translation</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: #111; color: #eee;
+    display: flex; flex-direction: column; height: 100dvh;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; background: #1b1b1b; border-bottom: 1px solid #2a2a2a;
+  }
+  header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+  #status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #999; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #d33; }
+  #dot.on { background: #3c3; }
+  #feed { flex: 1; overflow-y: auto; padding: 18px; }
+  .entry { max-width: 720px; margin: 0 auto 18px; }
+  .en { font-size: 14px; color: #8a8a8a; margin-bottom: 4px; }
+  .ko { font-size: 21px; line-height: 1.5; }
+  .ko.pending { color: #555; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live Sermon Translation</h1>
+  <div id="status"><span id="dot"></span><span id="statusText">connecting…</span></div>
+</header>
+<div id="feed"></div>
+
+<script>
+const room = new URLSearchParams(location.search).get("room") || "main";
+const feed = document.getElementById("feed");
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("statusText");
+
+function addEntry(en) {
+  const div = document.createElement("div");
+  div.className = "entry";
+  div.innerHTML = `<div class="en"></div><div class="ko pending">번역 중…</div>`;
+  div.querySelector(".en").textContent = en;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+  return div;
+}
+
+const pending = [];  // entries whose Korean translation hasn't arrived yet
+
+function onTranscript(text) {
+  pending.push(addEntry(text));
+}
+
+function onTranslation(source, text) {
+  let entry = pending.shift();
+  if (!entry) entry = addEntry(source);
+  const ko = entry.querySelector(".ko");
+  ko.textContent = text;
+  ko.classList.remove("pending");
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/ws/client?room=${room}`);
+  ws.onopen = () => { dot.classList.add("on"); statusText.textContent = `room: ${room}`; };
+  ws.onmessage = (event) => {
+    const m = JSON.parse(event.data);
+    if (m.type === "transcript") onTranscript(m.text);
+    else if (m.type === "translation") onTranslation(m.source, m.text);
+  };
+  ws.onclose = () => {
+    dot.classList.remove("on");
+    statusText.textContent = "reconnecting…";
+    pending.length = 0;
+    setTimeout(connect, 2000);
+  };
+}
+connect();
+</script>
+</body>
+</html>
