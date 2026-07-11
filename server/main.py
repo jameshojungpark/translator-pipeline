@@ -55,10 +55,14 @@ class HostSession:
     async def on_transcript(self, text: str, is_final: bool) -> None:
         if not is_final:
             return
-        print(f"[EN] {text}", flush=True)
-        await self.room.broadcast({"type": "transcript", "text": text})
         for sentence in self.segmenter.feed(text):
-            await self.sentence_queue.put(sentence)
+            await self.emit_sentence(sentence)
+
+    async def emit_sentence(self, sentence: str) -> None:
+        """Broadcast a segmented sentence and queue it for translation."""
+        print(f"[EN] {sentence}", flush=True)
+        await self.room.broadcast({"type": "transcript", "text": sentence})
+        await self.sentence_queue.put(sentence)
 
     async def translation_worker(self) -> None:
         """Translate sentences one at a time, preserving order."""
@@ -79,7 +83,7 @@ class HostSession:
     async def close(self) -> None:
         leftover = self.segmenter.flush()
         if leftover:
-            await self.sentence_queue.put(leftover)
+            await self.emit_sentence(leftover)
         await self.sentence_queue.put(None)
         await self.transcriber.stop()
 
