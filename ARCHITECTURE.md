@@ -34,7 +34,7 @@ sentence whose audio is currently playing).
 ```mermaid
 flowchart LR
     subgraph Host
-        MIC["Microphone<br/>(mic_test.py)<br/>16 kHz mono PCM,<br/>100 ms chunks"]
+        MIC["Browser host (client/host.html)<br/>AudioWorklet → 16 kHz mono PCM,<br/>100 ms chunks<br/>(or mic_test.py stand-in)"]
     end
 
     subgraph Server["FastAPI server (server/main.py)"]
@@ -74,7 +74,7 @@ flowchart LR
 ASCII fallback:
 
 ```
- Host mic (mic_test.py)
+ Host mic (client/host.html, or mic_test.py stand-in)
    16 kHz mono 16-bit PCM, 100 ms chunks
         │  binary WS frames
         ▼
@@ -110,11 +110,22 @@ ASCII fallback:
 
 ### 1. Audio capture (host side)
 
-The stand-in host app is `mic_test.py`. It opens the microphone via
-`sounddevice` at 16 kHz mono 16-bit PCM, in 100 ms chunks (1,600 frames), and
-sends each chunk as a binary WebSocket message to
-`ws://server/ws/host?room=NAME`. There is no real browser host app yet — this
-script plays that role.
+The host app is `client/host.html`, served at `/host.html`. A start/stop
+button opens the microphone with `getUserMedia`, and an AudioWorklet
+downsamples the capture from the browser's native rate to 16 kHz mono 16-bit
+PCM by linear interpolation (carrying the fractional read position across
+blocks so there are no seams), posting one 100 ms chunk (1,600 frames) at a
+time. Each chunk goes out as a binary WebSocket message to
+`ws://server/ws/host?room=NAME` (room from the `?room=` query, default
+`main`). The page shows a live level meter, retries the connection every 2 s
+if it drops mid-broadcast (chunks produced while disconnected are dropped),
+and reports the 4409 "room already has a host" rejection instead of
+reconnecting. It also opens a second, receive-only `/ws/client` socket as a
+text-only pipeline monitor so the operator can confirm transcripts and
+translations are flowing — it never plays TTS audio.
+
+There is also `mic_test.py`, a terminal stand-in host that captures via
+`sounddevice` at 16 kHz directly and streams the same binary format.
 
 ### 2. Host connection (`/ws/host` in `server/main.py`)
 
@@ -276,7 +287,8 @@ Run:
 
 ```bash
 uvicorn server.main:app --reload   # server + client page at http://127.0.0.1:8000/
-python mic_test.py                 # stand-in host (speak English)
+                                   # host page at http://127.0.0.1:8000/host.html
+python mic_test.py                 # terminal stand-in host (speak English)
 python listen_test.py              # optional terminal viewer
 python tts_test.py [text]          # TTS-only smoke test (synthesizes + plays one sentence)
 pytest                             # 26 tests: segmenter, glossary, rooms, translator, tts

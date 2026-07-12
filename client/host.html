@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sermon Translator — Host</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: #111; color: #eee;
+    display: flex; flex-direction: column; height: 100dvh;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; background: #1b1b1b; border-bottom: 1px solid #2a2a2a;
+  }
+  header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+  #status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #999; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #d33; }
+  #dot.on { background: #3c3; }
+  #panel {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 26px 18px; border-bottom: 1px solid #2a2a2a;
+  }
+  #micBtn {
+    font-size: 20px; padding: 16px 36px; border-radius: 12px; border: none;
+    background: #2c6e31; color: #fff; cursor: pointer;
+  }
+  #micBtn.live { background: #8c2c2c; }
+  #micBtn:disabled { background: #333; color: #777; cursor: default; }
+  #meter { width: 260px; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
+  #meterFill { height: 100%; width: 0; background: #3c3; transition: width 80ms linear; }
+  #info { font-size: 13px; color: #999; min-height: 1.2em; }
+  #info.error { color: #e66; }
+  #monitor { flex: 1; overflow-y: auto; padding: 14px 18px; }
+  #monitor h2 { font-size: 12px; font-weight: 500; color: #666; margin-bottom: 10px; }
+  .line { max-width: 720px; margin: 0 auto 10px; }
+  .line .en { font-size: 13px; color: #8a8a8a; }
+  .line .ko { font-size: 15px; }
+  .line .ko:empty::after { content: "번역 중…"; color: #555; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sermon Translator — Host</h1>
+  <div id="status"><span id="dot"></span><span id="statusText">idle</span></div>
+</header>
+<div id="panel">
+  <button id="micBtn">🎙️ 방송 시작 (Start broadcasting)</button>
+  <div id="meter"><div id="meterFill"></div></div>
+  <div id="info"></div>
+</div>
+<div id="monitor"><h2>파이프라인 모니터 (what viewers see)</h2></div>
+
+<script>
+const room = new URLSearchParams(location.search).get("room") || "main";
+const micBtn = document.getElementById("micBtn");
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("statusText");
+const info = document.getElementById("info");
+const meterFill = document.getElementById("meterFill");
+const monitor = document.getElementById("monitor");
+const wsBase = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
+
+// ---- capture: mic → AudioWorklet (downsample to 16 kHz) → 100 ms Int16 chunks ----
+
+// The worklet interpolates linearly from the context's native rate down to
+// 16 kHz, carrying the fractional read position and last sample across
+// process() blocks so there are no seams, and posts one 1600-sample
+// (100 ms) chunk at a time along with its peak level for the meter.
+const workletSource = `
+class Pcm16kCapture extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.ratio = sampleRate / 16000;
+    this.pos = 0;      // fractional index into the current block (-1 ≤ pos)
+    this.tail = 0;     // last sample of the previous block, for pos in [-1, 0)
+    this.chunk = new Int16Array(1600);
+    this.filled = 0;
+    this.peak = 0;
+  }
+  process(inputs) {
+    const src = inputs[0][0];
+    if (!src || src.length === 0) return true;
+    const n = src.length;
+    let pos = this.pos;
+    while (pos < n - 1) {
+      const i = Math.floor(pos);
+      const frac = pos - i;
+      const s0 = i < 0 ? this.tail : src[i];
+      const sample = s0 + (src[i + 1] - s0) * frac;
+      const v = Math.max(-1, Math.min(1, sample));
+      const abs = v < 0 ? -v : v;
+      if (abs > this.peak) this.peak = abs;
+      this.chunk[this.filled++] = v < 0 ? v * 32768 : v * 32767;
+      if (this.filled === this.chunk.length) {
+        const buf = this.chunk.buffer.slice(0);
+        this.port.postMessage({ buf, peak: this.peak }, [buf]);
+        this.filled = 0;
+        this.peak = 0;
+      }
+      pos += this.ratio;
+    }
+    this.pos = pos - n;
+    this.tail = src[n - 1];
+    return true;
+  }
+}
+registerProcessor("pcm16k-capture", Pcm16kCapture);
+`;
+const workletUrl = URL.createObjectURL(
+  new Blob([workletSource], { type: "application/javascript" })
+);
+
+let ctx = null, stream = null, ws = null;
+let live = false;         // user wants to broadcast (drives reconnects)
+let startedAt = 0, timer = null;
+
+function setInfo(text, isError = false) {
+  info.textContent = text;
+  info.classList.toggle("error", isError);
+}
+
+function setStatus(connected, text) {
+  dot.classList.toggle("on", connected);
+  statusText.textContent = text;
+}
+
+async function startCapture() {
+  stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await ctx.audioWorklet.addModule(workletUrl);
+  const node = new AudioWorkletNode(ctx, "pcm16k-capture");
+  node.port.onmessage = ({ data }) => {
+    meterFill.style.width = `${Math.min(100, data.peak * 140)}%`;
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(data.buf);
+  };
+  ctx.createMediaStreamSource(stream).connect(node);
+  // Pull the graph so the worklet runs; its output is silent.
+  const mute = ctx.createGain();
+  mute.gain.value = 0;
+  node.connect(mute).connect(ctx.destination);
+}
+
+function connectHostSocket() {
+  ws = new WebSocket(`${wsBase}/ws/host?room=${room}`);
+  ws.onopen = () => {
+    setStatus(true, `room: ${room} — 송출 중`);
+    setInfo("");
+  };
+  ws.onclose = (event) => {
+    ws = null;
+    if (!live) return;
+    if (event.code === 4409) {
+      setInfo("이 방에는 이미 호스트가 있습니다 (room already has a host)", true);
+      stop();
+      return;
+    }
+    setStatus(false, "reconnecting…");
+    setTimeout(() => { if (live) connectHostSocket(); }, 2000);
+  };
+}
+
+async function start() {
+  micBtn.disabled = true;
+  try {
+    await startCapture();
+  } catch (error) {
+    setInfo(`마이크를 열 수 없습니다: ${error.message}`, true);
+    micBtn.disabled = false;
+    return;
+  }
+  live = true;
+  connectHostSocket();
+  startedAt = Date.now();
+  timer = setInterval(() => {
+    const s = Math.floor((Date.now() - startedAt) / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    micBtn.textContent = `⏹ 방송 중지 (Stop) ${mm}:${ss}`;
+  }, 1000);
+  micBtn.textContent = "⏹ 방송 중지 (Stop)";
+  micBtn.classList.add("live");
+  micBtn.disabled = false;
+}
+
+function stop() {
+  live = false;
+  clearInterval(timer);
+  if (ws) { ws.close(1000); ws = null; }
+  if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+  if (ctx) { ctx.close(); ctx = null; }
+  meterFill.style.width = "0";
+  setStatus(false, "idle");
+  micBtn.textContent = "🎙️ 방송 시작 (Start broadcasting)";
+  micBtn.classList.remove("live");
+  micBtn.disabled = false;
+}
+
+micBtn.onclick = () => (live ? stop() : start());
+
+// ---- monitor: a receive-only client socket, so the operator can confirm
+// ---- the pipeline is producing transcripts/translations (no audio here) ----
+
+const lines = new Map(); // sentence id -> line element
+
+function monitorLine(id, en) {
+  const div = document.createElement("div");
+  div.className = "line";
+  div.innerHTML = `<div class="en"></div><div class="ko"></div>`;
+  div.querySelector(".en").textContent = en;
+  monitor.appendChild(div);
+  while (monitor.children.length > 60) monitor.children[1].remove(); // keep <h2>
+  lines.set(id, div);
+  if (lines.size > 60) lines.delete(lines.keys().next().value);
+  monitor.scrollTop = monitor.scrollHeight;
+  return div;
+}
+
+function connectMonitor() {
+  const monitorWs = new WebSocket(`${wsBase}/ws/client?room=${room}`);
+  monitorWs.onmessage = (event) => {
+    const m = JSON.parse(event.data);
+    if (m.type === "transcript") monitorLine(m.id, m.text);
+    else if (m.type === "translation") {
+      const line = lines.get(m.id) || monitorLine(m.id, m.source);
+      line.querySelector(".ko").textContent =
+        m.reference ? `${m.text} 〔${m.reference}〕` : m.text;
+      monitor.scrollTop = monitor.scrollHeight;
+    }
+  };
+  monitorWs.onclose = () => setTimeout(connectMonitor, 2000);
+}
+connectMonitor();
+</script>
+</body>
+</html>
