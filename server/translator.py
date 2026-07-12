@@ -1,26 +1,54 @@
 """English → Korean sentence translation via Gemini Flash Lite (text only)."""
 
-import asyncio
 import logging
 import re
 
+from typing import NamedTuple
+
 from google import genai
-from google.genai import errors, types
+from google.genai import types
 
 from server.glossary import build_translation_instruction
+from server.retry import call_with_retry
 
 logger = logging.getLogger(__name__)
 
 MODEL = "gemini-3.1-flash-lite"
-MAX_ATTEMPTS = 4
-# 429: rate limit; 500/503/504: transient server-side failures ("high demand").
-RETRYABLE_CODES = {429, 500, 503, 504}
+
+# Marker the model appends when it reproduced a 개역개정 verse, e.g.
+# "@ref 요한복음 3:16". Marker lines never belong in the spoken/displayed text;
+# one only counts as a reference if it contains a digit (chapter/verse), so
+# junk like "@ref none" is discarded entirely.
+_MARKER_PATTERN = re.compile(r"^@ref\b\s*(.*)$")
 
 
-def _retry_delay_seconds(error: errors.APIError) -> float | None:
-    """Pull the server-suggested retry delay out of a 429, if present."""
-    match = re.search(r"retry in ([0-9.]+)\s*s", str(error), re.IGNORECASE)
-    return float(match.group(1)) if match else None
+class Translation(NamedTuple):
+    text: str
+    reference: str | None = None
+
+
+def parse_translation(raw: str) -> Translation:
+    """Split a model response into the Korean text and an optional verse ref.
+
+    The model is instructed to wrap the verse portion of the text in “ ”
+    itself (a sentence often mixes the speaker's own words with the verse).
+    If it annotated a reference but forgot the quotes, the whole text is the
+    verse as far as we know, so it gets wrapped as a fallback.
+    """
+    text_lines: list[str] = []
+    reference: str | None = None
+    for line in raw.strip().splitlines():
+        match = _MARKER_PATTERN.match(line.strip())
+        if match:
+            candidate = match.group(1).strip()
+            if any(ch.isdigit() for ch in candidate):
+                reference = candidate
+        else:
+            text_lines.append(line)
+    text = "\n".join(text_lines).strip()
+    if reference is not None and text and not any(q in text for q in "“”\""):
+        text = f"“{text}”"
+    return Translation(text, reference)
 
 
 class Translator:
@@ -38,25 +66,15 @@ class Translator:
             ),
         )
 
-    async def translate(self, sentence: str) -> str:
+    async def translate(self, sentence: str) -> Translation:
         """Translate one sentence, retrying on rate limits and transient 5xx."""
-        backoff = 1.0
-        for attempt in range(1, MAX_ATTEMPTS + 1):
-            try:
-                response = await self._client.aio.models.generate_content(
-                    model=self._model,
-                    contents=sentence,
-                    config=self._config,
-                )
-                return (response.text or "").strip()
-            except errors.APIError as error:
-                if error.code not in RETRYABLE_CODES or attempt == MAX_ATTEMPTS:
-                    raise
-                wait = _retry_delay_seconds(error) or backoff
-                logger.warning(
-                    "retryable API error %s (attempt %d/%d), retrying in %.1fs",
-                    error.code, attempt, MAX_ATTEMPTS, wait,
-                )
-                await asyncio.sleep(wait)
-                backoff *= 2
-        raise RuntimeError("unreachable")
+
+        async def call() -> Translation:
+            response = await self._client.aio.models.generate_content(
+                model=self._model,
+                contents=sentence,
+                config=self._config,
+            )
+            return parse_translation(response.text or "")
+
+        return await call_with_retry(call)

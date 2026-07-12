@@ -22,7 +22,13 @@ async def main(url: str, room: str) -> None:
             if kind == "transcript":
                 print(f"[EN] {message['text']}")
             elif kind == "translation":
-                print(f"[KO] {message['text']}")
+                ref = message.get("reference")
+                suffix = f"  〔{ref}〕" if ref else ""
+                print(f"[KO] {message['text']}{suffix}")
+            elif kind == "tts":
+                pcm_bytes = len(message["audio"]) * 3 // 4  # base64 → raw size
+                seconds = pcm_bytes / (2 * message["rate"])
+                print(f"[TTS] {seconds:.1f}s of audio (id={message['id']})")
 
 
 if __name__ == "__main__":
