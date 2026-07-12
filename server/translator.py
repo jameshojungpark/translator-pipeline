@@ -1,4 +1,4 @@
-"""English → Korean sentence translation via Gemini 2.5 Flash (text only)."""
+"""English → Korean sentence translation via Gemini Flash Lite (text only)."""
 
 import asyncio
 import logging
@@ -11,7 +11,7 @@ from server.glossary import build_translation_instruction
 
 logger = logging.getLogger(__name__)
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 MAX_ATTEMPTS = 4
 # 429: rate limit; 500/503/504: transient server-side failures ("high demand").
 RETRYABLE_CODES = {429, 500, 503, 504}
