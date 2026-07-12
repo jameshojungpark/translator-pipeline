@@ -1,0 +1,12 @@
+.env
+.venv
+.git
+__pycache__
+**/__pycache__
+tests/
+raw/
+*.command
+*.md
+mic_test.py
+listen_test.py
+tts_test.py
