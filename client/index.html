@@ -52,7 +52,7 @@
 <header>
   <h1>Live Sermon Translation</h1>
   <div id="status"><span id="dot"></span><span id="statusText">connecting…</span></div>
-  <button id="scrollBtn" title="자동 스크롤 켜기/끄기">⬇ 자동</button>
+  <button id="scrollBtn" title="Toggle auto-scroll">⬇ Auto Scroll</button>
   <button id="muteBtn" title="음소거" hidden>🔊</button>
 </header>
 <div id="feed"></div>
@@ -80,7 +80,7 @@ function scrollToBottom() {
 scrollBtn.onclick = () => {
   autoScroll = !autoScroll;
   scrollBtn.classList.toggle("off", !autoScroll);
-  scrollBtn.textContent = autoScroll ? "⬇ 자동" : "⬇ 꺼짐";
+  scrollBtn.textContent = autoScroll ? "⬇ Auto Scroll" : "⬇ Auto Scroll Off";
   scrollToBottom();
 };
 
