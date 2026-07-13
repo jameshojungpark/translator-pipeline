@@ -20,10 +20,12 @@
   #status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #999; }
   #dot { width: 9px; height: 9px; border-radius: 50%; background: #d33; }
   #dot.on { background: #3c3; }
-  #muteBtn {
+  #muteBtn, #scrollBtn {
     font-size: 18px; background: none; border: 1px solid #333; border-radius: 8px;
     color: #eee; padding: 4px 10px; cursor: pointer;
   }
+  #scrollBtn { font-size: 13px; }
+  #scrollBtn.off { color: #777; border-color: #2a2a2a; }
   #feed { flex: 1; overflow-y: auto; padding: 18px; }
   .entry { max-width: 720px; margin: 0 auto 18px; border-radius: 10px; padding: 6px 10px; }
   .entry.speaking { background: #20281f; outline: 1px solid #3a4a38; }
@@ -50,6 +52,7 @@
 <header>
   <h1>Live Sermon Translation</h1>
   <div id="status"><span id="dot"></span><span id="statusText">connecting…</span></div>
+  <button id="scrollBtn" title="자동 스크롤 켜기/끄기">⬇ 자동</button>
   <button id="muteBtn" title="음소거" hidden>🔊</button>
 </header>
 <div id="feed"></div>
@@ -67,6 +70,20 @@ const overlay = document.getElementById("overlay");
 
 const entries = new Map();  // sentence id -> entry element
 
+let autoScroll = true;
+const scrollBtn = document.getElementById("scrollBtn");
+
+function scrollToBottom() {
+  if (autoScroll) feed.scrollTop = feed.scrollHeight;
+}
+
+scrollBtn.onclick = () => {
+  autoScroll = !autoScroll;
+  scrollBtn.classList.toggle("off", !autoScroll);
+  scrollBtn.textContent = autoScroll ? "⬇ 자동" : "⬇ 꺼짐";
+  scrollToBottom();
+};
+
 function addEntry(id, en) {
   const div = document.createElement("div");
   div.className = "entry";
@@ -74,7 +91,7 @@ function addEntry(id, en) {
     <div class="ko-row"><div class="ko pending">번역 중…</div><span class="ref"></span></div>`;
   div.querySelector(".en").textContent = en;
   feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
+  scrollToBottom();
   entries.set(id, div);
   if (entries.size > 200) {  // keep the map from growing all service long
     const oldest = entries.keys().next().value;
@@ -93,7 +110,7 @@ function onTranslation(id, source, text, reference) {
   ko.textContent = text;  // verse quotes arrive embedded, around just the verse
   ko.classList.remove("pending");
   if (reference) entry.querySelector(".ref").textContent = reference;
-  feed.scrollTop = feed.scrollHeight;
+  scrollToBottom();
 }
 
 // ---- audio (queued, gapless, aligned to entries via id) ----
@@ -111,11 +128,32 @@ document.getElementById("enableBtn").onclick = () => {
   muteBtn.hidden = false;
 };
 
+// After a browser sleep / audio interruption the context lands in "suspended"
+// (iOS: "interrupted") and must be resume()d — changing gain alone does nothing.
+async function resumeAudio() {
+  if (!ctx || ctx.state === "running") return;
+  try { await ctx.resume(); } catch (e) { /* needs a user gesture — button click covers it */ }
+  cursor = 0;  // anything scheduled before the suspend is stale; restart the queue from now
+}
+
 muteBtn.onclick = () => {
+  if (ctx && ctx.state !== "running") {
+    // context died while we were away — this click is a user gesture, so
+    // use it to recover instead of toggling mute
+    resumeAudio();
+    muted = false;
+    gain.gain.value = 1;
+    muteBtn.textContent = "🔊";
+    return;
+  }
   muted = !muted;
   if (gain) gain.gain.value = muted ? 0 : 1;
   muteBtn.textContent = muted ? "🔇" : "🔊";
 };
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !muted) resumeAudio();
+});
 
 function pcmToAudioBuffer(b64, rate) {
   const bin = atob(b64);
@@ -130,6 +168,12 @@ function pcmToAudioBuffer(b64, rate) {
 
 function onTts(id, b64, rate) {
   if (!ctx || !b64) return;  // audio not enabled yet — text still flows
+  if (ctx.state !== "running") {
+    // suspended mid-service: try to recover, but drop this clip — this is a
+    // live feed and a replayed backlog would lag behind the preacher
+    resumeAudio();
+    return;
+  }
   const buf = pcmToAudioBuffer(b64, rate || 24000);
   const src = ctx.createBufferSource();
   src.buffer = buf;
