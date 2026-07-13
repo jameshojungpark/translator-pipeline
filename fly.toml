@@ -6,7 +6,7 @@
 #   fly secrets set GEMINI_API_KEY=... DEEPGRAM_API_KEY=... GOOGLE_CLOUD_TTS_KEY=...
 #   fly deploy
 
-app = "sermon-translator"
+app = "translator-pipeline"
 # Pick the region closest to the church (fly platform regions lists them).
 primary_region = "nrt"
 
