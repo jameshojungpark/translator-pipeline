@@ -69,8 +69,8 @@
 <div id="feed"></div>
 <div id="overlay">
   <div id="overlayBox">
-    <h2>Select your language</h2>
-    <p>Subtitles and audio will play in the language you choose. You can change it later from the menu at the top.</p>
+    <h2>실시간 한국어 통역 · Live Korean translation</h2>
+    <p>버튼을 누르면 자막과 음성이 시작됩니다. Tap the button below to start subtitles and audio.</p>
   </div>
 </div>
 
@@ -78,17 +78,9 @@
 const params = new URLSearchParams(location.search);
 const room = params.get("room") || "main";
 // Language menu (English names first — the picker itself is explained in
-// English). textOnly languages have no Cloud TTS voice: subtitles, no audio.
-// Keep textOnly languages at the bottom so audio-capable ones list first.
+// English). Free-trial branch: Korean only.
 const LANGS = {
-  en:  { en: "English",   label: "English" },
   ko:  { en: "Korean",    label: "한국어" },
-  zh:  { en: "Mandarin",  label: "普通话" },
-  yue: { en: "Cantonese", label: "廣東話" },
-  pa:  { en: "Punjabi",   label: "ਪੰਜਾਬੀ" },
-  es:  { en: "Spanish",   label: "Español" },
-  fr:  { en: "French",    label: "Français" },
-  fa:  { en: "Farsi",     label: "فارسی", textOnly: true },
 };
 let lang = LANGS[params.get("lang")] ? params.get("lang") : "ko";
 const feed = document.getElementById("feed");

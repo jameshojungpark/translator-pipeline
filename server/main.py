@@ -3,10 +3,10 @@
 Endpoints:
   WS /ws/host?room=NAME&input_lang=CODE — binary 16 kHz mono 16-bit PCM audio from
                                        the host app; input_lang is the speaker's
-                                       language (a SOURCE_LANGUAGES code: en/fr/ko)
+                                       language (this branch: en only)
   WS /ws/client?room=NAME&lang=CODE  — receive-only; gets JSON transcript/translation
-                                       events for one language code from
-                                       server/glossary.py ("all" = every language)
+                                       events for one language code
+                                       ("all" = every language)
 """
 
 import asyncio
@@ -21,7 +21,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from server import tts
-from server.glossary import LANGUAGES, SOURCE_LANGUAGES
+from server.glossary import LANGUAGES
 from server.rooms import Room, RoomManager
 from server.segmenter import SentenceSegmenter
 from server.stt import DeepgramTranscriber
@@ -34,6 +34,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Live Sermon Translator")
+
+# Free-trial branch: only English → Korean is served. glossary.py keeps the
+# full language registry; these sets gate what this branch accepts. "en" stays
+# a servable target because the speaker's own language passes through as the
+# transcript (no translator or TTS is built for it).
+SERVED_SOURCES: frozenset[str] = frozenset({"en"})
+SERVED_TARGETS: frozenset[str] = frozenset({"en", "ko"})
+
 rooms = RoomManager()
 _translators: dict[tuple[str, str], Translator] = {}  # (source, target) → Translator
 _synthesizers: dict[str, Synthesizer] = {}
@@ -233,7 +241,7 @@ class HostSession:
 async def ws_host(
     websocket: WebSocket, room: str = "main", input_lang: str = "en"
 ) -> None:
-    if input_lang not in SOURCE_LANGUAGES:
+    if input_lang not in SERVED_SOURCES:
         logger.warning("host requested unsupported input_lang=%s; using en", input_lang)
         input_lang = "en"
     the_room = rooms.get_or_create(room)
@@ -249,12 +257,12 @@ async def ws_host(
         the_room,
         {
             lang: get_translator(lang, input_lang)
-            for lang in LANGUAGES
+            for lang in SERVED_TARGETS
             if lang != input_lang  # the speaker's language passes through
         },
         {
             lang: synth
-            for lang in LANGUAGES
+            for lang in SERVED_TARGETS
             if lang != input_lang
             if (synth := get_synthesizer(lang)) is not None
         },
@@ -279,7 +287,7 @@ async def ws_host(
 
 @app.websocket("/ws/client")
 async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") -> None:
-    if lang != "all" and lang not in LANGUAGES:
+    if lang != "all" and lang not in SERVED_TARGETS:
         logger.warning("client requested unsupported lang=%s; serving ko", lang)
         lang = "ko"
     the_room = rooms.get_or_create(room)
