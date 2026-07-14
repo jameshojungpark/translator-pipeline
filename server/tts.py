@@ -7,7 +7,6 @@ container, so the header is stripped here before the audio leaves the server.
 
 import base64
 import logging
-
 import httpx
 
 from server.retry import call_with_retry
