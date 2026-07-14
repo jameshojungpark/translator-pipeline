@@ -39,6 +39,39 @@ async def test_broadcast_drops_dead_clients() -> None:
     assert len(ok.received) == 2
 
 
+@pytest.mark.asyncio
+async def test_broadcast_with_lang_targets_matching_and_all_clients() -> None:
+    room = Room("main")
+    ko, zh, monitor = FakeClient(), FakeClient(), FakeClient()
+    room.add_client(ko, "ko")
+    room.add_client(zh, "zh")
+    room.add_client(monitor, "all")
+    message = {"type": "translation", "lang": "zh", "text": "恩典"}
+    await room.broadcast(message, lang="zh")
+    assert ko.received == []
+    assert zh.received == [message]
+    assert monitor.received == [message]
+
+
+@pytest.mark.asyncio
+async def test_broadcast_without_lang_reaches_every_client() -> None:
+    room = Room("main")
+    ko, zh = FakeClient(), FakeClient()
+    room.add_client(ko, "ko")
+    room.add_client(zh, "zh")
+    await room.broadcast({"type": "transcript", "text": "hi"})
+    assert ko.received == [{"type": "transcript", "text": "hi"}]
+    assert zh.received == [{"type": "transcript", "text": "hi"}]
+
+
+def test_wanted_langs_ignores_all_monitors() -> None:
+    room = Room("main")
+    room.add_client(FakeClient(), "ko")
+    room.add_client(FakeClient(), "fa")
+    room.add_client(FakeClient(), "all")
+    assert room.wanted_langs() == {"ko", "fa"}
+
+
 def test_manager_cleanup_only_removes_empty_rooms() -> None:
     manager = RoomManager()
     room = manager.get_or_create("main")

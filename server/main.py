@@ -1,8 +1,10 @@
 """FastAPI server: host audio in → Deepgram STT → sentence → Gemini translation.
 
 Endpoints:
-  WS /ws/host?room=NAME    — binary 16 kHz mono 16-bit PCM audio from the host app
-  WS /ws/client?room=NAME  — receive-only; gets JSON transcript/translation events
+  WS /ws/host?room=NAME               — binary 16 kHz mono 16-bit PCM audio from the host app
+  WS /ws/client?room=NAME&lang=CODE  — receive-only; gets JSON transcript/translation
+                                       events for one language code from
+                                       server/glossary.py ("all" = every language)
 """
 
 import asyncio
@@ -17,6 +19,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from server import tts
+from server.glossary import LANGUAGES
 from server.rooms import Room, RoomManager
 from server.segmenter import SentenceSegmenter
 from server.stt import DeepgramTranscriber
@@ -30,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Live Sermon Translator")
 rooms = RoomManager()
-_translator: Translator | None = None
-_synthesizer: Synthesizer | None = None
+_translators: dict[str, Translator] = {}
+_synthesizers: dict[str, Synthesizer] = {}
 
 
 def _require_gemini_key() -> str:
@@ -41,25 +44,50 @@ def _require_gemini_key() -> str:
     return api_key
 
 
-def get_translator() -> Translator:
-    global _translator
-    if _translator is None:
-        _translator = Translator(_require_gemini_key())
-    return _translator
+def get_translator(lang: str) -> Translator:
+    if lang not in _translators:
+        _translators[lang] = Translator(_require_gemini_key(), lang=lang)
+    return _translators[lang]
 
 
-def get_synthesizer() -> Synthesizer:
-    global _synthesizer
-    if _synthesizer is None:
+def _tts_voice(lang: str) -> str | None:
+    """Resolve the Cloud TTS voice for a language (env override, then default).
+
+    None means the language is text-only: Cloud TTS has no voice for it.
+    """
+    override = os.environ.get(f"TTS_VOICE_{lang.upper()}")
+    if override:
+        return override
+    if lang == "ko" and os.environ.get("TTS_VOICE"):  # pre-Mandarin variable name
+        return os.environ["TTS_VOICE"]
+    return LANGUAGES[lang].tts_voice
+
+
+def _tts_speed(lang: str) -> float:
+    """Resolve speakingRate: per-language env, shared env, then config default."""
+    override = os.environ.get(f"TTS_SPEED_{lang.upper()}") or os.environ.get(
+        "TTS_SPEED"
+    )
+    if override:
+        return float(override)
+    return LANGUAGES[lang].tts_speed
+
+
+def get_synthesizer(lang: str) -> Synthesizer | None:
+    """Build the synthesizer for a language; None for text-only languages."""
+    if lang not in _synthesizers:
+        voice = _tts_voice(lang)
+        if voice is None:
+            return None
         api_key = os.environ.get("GOOGLE_CLOUD_TTS_KEY")
         if not api_key:
             raise RuntimeError("GOOGLE_CLOUD_TTS_KEY is not set")
-        _synthesizer = Synthesizer(
+        _synthesizers[lang] = Synthesizer(
             api_key,
-            voice=os.environ.get("TTS_VOICE", tts.VOICE),
-            speed=float(os.environ.get("TTS_SPEED", tts.SPEED)),
+            voice=voice,
+            speed=_tts_speed(lang),
         )
-    return _synthesizer
+    return _synthesizers[lang]
 
 
 class HostSession:
@@ -71,11 +99,14 @@ class HostSession:
     """
 
     def __init__(
-        self, room: Room, translator: Translator, synthesizer: Synthesizer
+        self,
+        room: Room,
+        translators: dict[str, Translator],
+        synthesizers: dict[str, Synthesizer],
     ) -> None:
         self.room = room
-        self.translator = translator
-        self.synthesizer = synthesizer
+        self.translators = translators
+        self.synthesizers = synthesizers
         self.segmenter = SentenceSegmenter()
         self.sentence_queue: asyncio.Queue[tuple[int, str] | None] = asyncio.Queue()
         self.transcriber = DeepgramTranscriber(
@@ -100,44 +131,72 @@ class HostSession:
         await self.sentence_queue.put((sentence_id, sentence))
 
     async def translation_worker(self) -> None:
-        """Translate then synthesize sentences one at a time, preserving order."""
+        """Translate then synthesize sentences one at a time, preserving order.
+
+        Sentences stay serial (order guarantee); within a sentence the target
+        languages run concurrently, and a failure in one language never costs
+        the others their text or audio. Only languages some viewer actually
+        selected are processed — no Gemini/TTS spend on languages nobody is
+        listening to ("all" monitors don't create demand).
+        """
         while True:
             item = await self.sentence_queue.get()
             if item is None:
                 return
             sentence_id, sentence = item
-            try:
-                korean = await self.translator.translate(sentence)
-            except Exception:
-                logger.exception("translation failed for: %s", sentence)
+            langs = self.room.wanted_langs() & self.translators.keys()
+            if not langs:
                 continue
-            ref_note = f"  〔{korean.reference}〕" if korean.reference else ""
-            print(f"[KO] {korean.text}{ref_note}", flush=True)
-            await self.room.broadcast(
-                {
-                    "type": "translation",
-                    "id": sentence_id,
-                    "source": sentence,
-                    "text": korean.text,
-                    "reference": korean.reference,
-                }
+            await asyncio.gather(
+                *(
+                    self._relay_language(sentence_id, sentence, lang)
+                    for lang in sorted(langs)
+                )
             )
-            # Text is already out; a TTS failure only costs this sentence's audio.
-            # Verse quotation marks are display-only — keep them out of TTS.
-            tts_text = korean.text.replace("“", "").replace("”", "")
-            try:
-                audio = await self.synthesizer.synthesize(tts_text)
-            except Exception:
-                logger.exception("tts failed for: %s", tts_text)
-                continue
-            await self.room.broadcast(
-                {
-                    "type": "tts",
-                    "id": sentence_id,
-                    "rate": tts.OUTPUT_SAMPLE_RATE,
-                    "audio": base64.b64encode(audio).decode("ascii"),
-                }
-            )
+
+    async def _relay_language(
+        self, sentence_id: int, sentence: str, lang: str
+    ) -> None:
+        """Translate + synthesize one sentence into one language and broadcast."""
+        try:
+            translated = await self.translators[lang].translate(sentence)
+        except Exception:
+            logger.exception("translation failed lang=%s for: %s", lang, sentence)
+            return
+        ref_note = f"  〔{translated.reference}〕" if translated.reference else ""
+        print(f"[{lang.upper()}] {translated.text}{ref_note}", flush=True)
+        await self.room.broadcast(
+            {
+                "type": "translation",
+                "id": sentence_id,
+                "lang": lang,
+                "source": sentence,
+                "text": translated.text,
+                "reference": translated.reference,
+            },
+            lang=lang,
+        )
+        synthesizer = self.synthesizers.get(lang)
+        if synthesizer is None:
+            return  # text-only language (no TTS voice available)
+        # Text is already out; a TTS failure only costs this sentence's audio.
+        # Verse quotation marks are display-only — keep them out of TTS.
+        tts_text = translated.text.replace("“", "").replace("”", "")
+        try:
+            audio = await synthesizer.synthesize(tts_text)
+        except Exception:
+            logger.exception("tts failed lang=%s for: %s", lang, tts_text)
+            return
+        await self.room.broadcast(
+            {
+                "type": "tts",
+                "id": sentence_id,
+                "lang": lang,
+                "rate": tts.OUTPUT_SAMPLE_RATE,
+                "audio": base64.b64encode(audio).decode("ascii"),
+            },
+            lang=lang,
+        )
 
     async def close(self) -> None:
         leftover = self.segmenter.flush()
@@ -158,7 +217,15 @@ async def ws_host(websocket: WebSocket, room: str = "main") -> None:
     the_room.host_connected = True
     logger.info("host connected room=%s", room)
 
-    session = HostSession(the_room, get_translator(), get_synthesizer())
+    session = HostSession(
+        the_room,
+        {lang: get_translator(lang) for lang in LANGUAGES},
+        {
+            lang: synth
+            for lang in LANGUAGES
+            if (synth := get_synthesizer(lang)) is not None
+        },
+    )
     worker: asyncio.Task[None] | None = None
     try:
         await session.transcriber.start()
@@ -177,11 +244,16 @@ async def ws_host(websocket: WebSocket, room: str = "main") -> None:
 
 
 @app.websocket("/ws/client")
-async def ws_client(websocket: WebSocket, room: str = "main") -> None:
+async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") -> None:
+    if lang != "all" and lang not in LANGUAGES:
+        logger.warning("client requested unsupported lang=%s; serving ko", lang)
+        lang = "ko"
     the_room = rooms.get_or_create(room)
     await websocket.accept()
-    the_room.add_client(websocket)
-    logger.info("client joined room=%s (%d total)", room, the_room.client_count)
+    the_room.add_client(websocket, lang)
+    logger.info(
+        "client joined room=%s lang=%s (%d total)", room, lang, the_room.client_count
+    )
     try:
         # Clients are receive-only; we read just to detect disconnect.
         while True:

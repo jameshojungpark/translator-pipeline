@@ -1,4 +1,4 @@
-"""English → Korean sentence translation via Gemini Flash Lite (text only)."""
+"""English → target-language sentence translation via Gemini Flash Lite (text only)."""
 
 import logging
 import re
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 MODEL = "gemini-3.1-flash-lite"
 
-# Marker the model appends when it reproduced a 개역개정 verse, e.g.
-# "@ref 요한복음 3:16". Marker lines never belong in the spoken/displayed text;
+# Marker the model appends when it reproduced a Bible verse (개역개정 / 和合本),
+# e.g. "@ref 요한복음 3:16". Marker lines never belong in the spoken/displayed text;
 # one only counts as a reference if it contains a digit (chapter/verse), so
 # junk like "@ref none" is discarded entirely.
 _MARKER_PATTERN = re.compile(r"^@ref\b\s*(.*)$")
@@ -28,7 +28,7 @@ class Translation(NamedTuple):
 
 
 def parse_translation(raw: str) -> Translation:
-    """Split a model response into the Korean text and an optional verse ref.
+    """Split a model response into the translated text and an optional verse ref.
 
     The model is instructed to wrap the verse portion of the text in “ ”
     itself (a sentence often mixes the speaker's own words with the verse).
@@ -52,11 +52,12 @@ def parse_translation(raw: str) -> Translation:
 
 
 class Translator:
-    def __init__(self, api_key: str, model: str = MODEL) -> None:
+    def __init__(self, api_key: str, lang: str = "ko", model: str = MODEL) -> None:
         self._client = genai.Client(api_key=api_key)
         self._model = model
+        self.lang = lang
         self._config = types.GenerateContentConfig(
-            system_instruction=build_translation_instruction(),
+            system_instruction=build_translation_instruction(lang),
             temperature=0.2,
             # Translation is latency-sensitive; don't spend time thinking.
             thinking_config=types.ThinkingConfig(thinking_budget=0),
