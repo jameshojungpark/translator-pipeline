@@ -81,6 +81,7 @@ const room = params.get("room") || "main";
 // English). textOnly languages have no Cloud TTS voice: subtitles, no audio.
 // Keep textOnly languages at the bottom so audio-capable ones list first.
 const LANGS = {
+  en:  { en: "English",   label: "English" },
   ko:  { en: "Korean",    label: "한국어" },
   zh:  { en: "Mandarin",  label: "普通话" },
   yue: { en: "Cantonese", label: "廣東話" },
@@ -107,10 +108,14 @@ const scrollBtn = document.getElementById("scrollBtn");
 // feed (old entries would be in the wrong language). No page reload, so an
 // already-enabled AudioContext keeps working.
 const langSel = document.getElementById("langSel");
+function langLabel(meta) {
+  return meta.en === meta.label ? meta.en : `${meta.en} · ${meta.label}`;
+}
+
 for (const [code, meta] of Object.entries(LANGS)) {
   const opt = document.createElement("option");
   opt.value = code;
-  opt.textContent = `${meta.en} · ${meta.label}`;
+  opt.textContent = langLabel(meta);
   langSel.appendChild(opt);
 }
 langSel.value = lang;
@@ -186,7 +191,7 @@ const overlayBox = document.getElementById("overlayBox");
 for (const [code, meta] of Object.entries(LANGS)) {
   const btn = document.createElement("button");
   btn.className = "langBtn";
-  btn.textContent = `${meta.textOnly ? "💬" : "🔊"} ${meta.en} · ${meta.label}`;
+  btn.textContent = `${meta.textOnly ? "💬" : "🔊"} ${langLabel(meta)}`;
   if (meta.textOnly) {
     const note = document.createElement("small");
     note.textContent = "subtitles only — no audio";

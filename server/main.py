@@ -1,7 +1,9 @@
 """FastAPI server: host audio in → Deepgram STT → sentence → Gemini translation.
 
 Endpoints:
-  WS /ws/host?room=NAME               — binary 16 kHz mono 16-bit PCM audio from the host app
+  WS /ws/host?room=NAME&input_lang=CODE — binary 16 kHz mono 16-bit PCM audio from
+                                       the host app; input_lang is the speaker's
+                                       language (a SOURCE_LANGUAGES code: en/fr/ko)
   WS /ws/client?room=NAME&lang=CODE  — receive-only; gets JSON transcript/translation
                                        events for one language code from
                                        server/glossary.py ("all" = every language)
@@ -19,7 +21,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from server import tts
-from server.glossary import LANGUAGES
+from server.glossary import LANGUAGES, SOURCE_LANGUAGES
 from server.rooms import Room, RoomManager
 from server.segmenter import SentenceSegmenter
 from server.stt import DeepgramTranscriber
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Live Sermon Translator")
 rooms = RoomManager()
-_translators: dict[str, Translator] = {}
+_translators: dict[tuple[str, str], Translator] = {}  # (source, target) → Translator
 _synthesizers: dict[str, Synthesizer] = {}
 
 
@@ -44,10 +46,11 @@ def _require_gemini_key() -> str:
     return api_key
 
 
-def get_translator(lang: str) -> Translator:
-    if lang not in _translators:
-        _translators[lang] = Translator(_require_gemini_key(), lang=lang)
-    return _translators[lang]
+def get_translator(lang: str, source: str = "en") -> Translator:
+    key = (source, lang)
+    if key not in _translators:
+        _translators[key] = Translator(_require_gemini_key(), lang=lang, source=source)
+    return _translators[key]
 
 
 def _tts_voice(lang: str) -> str | None:
@@ -103,14 +106,16 @@ class HostSession:
         room: Room,
         translators: dict[str, Translator],
         synthesizers: dict[str, Synthesizer],
+        input_lang: str = "en",
     ) -> None:
         self.room = room
         self.translators = translators
         self.synthesizers = synthesizers
+        self.input_lang = input_lang
         self.segmenter = SentenceSegmenter()
         self.sentence_queue: asyncio.Queue[tuple[int, str] | None] = asyncio.Queue()
         self.transcriber = DeepgramTranscriber(
-            os.environ["DEEPGRAM_API_KEY"], self.on_transcript
+            os.environ["DEEPGRAM_API_KEY"], self.on_transcript, input_lang=input_lang
         )
         self._next_id = 0
 
@@ -124,7 +129,7 @@ class HostSession:
         """Broadcast a segmented sentence and queue it for translation."""
         sentence_id = self._next_id
         self._next_id += 1
-        print(f"[EN] {sentence}", flush=True)
+        print(f"[{self.input_lang.upper()}] {sentence}", flush=True)
         await self.room.broadcast(
             {"type": "transcript", "id": sentence_id, "text": sentence}
         )
@@ -144,7 +149,10 @@ class HostSession:
             if item is None:
                 return
             sentence_id, sentence = item
-            langs = self.room.wanted_langs() & self.translators.keys()
+            # The speaker's own language needs no translator — it passes
+            # through — so it counts as servable alongside the translators.
+            servable = self.translators.keys() | {self.input_lang}
+            langs = self.room.wanted_langs() & servable
             if not langs:
                 continue
             await asyncio.gather(
@@ -158,6 +166,21 @@ class HostSession:
         self, sentence_id: int, sentence: str, lang: str
     ) -> None:
         """Translate + synthesize one sentence into one language and broadcast."""
+        if lang == self.input_lang:
+            # Same language as the speaker: pass the transcript through as the
+            # translation. No TTS — the preacher's own voice is the audio.
+            await self.room.broadcast(
+                {
+                    "type": "translation",
+                    "id": sentence_id,
+                    "lang": lang,
+                    "source": sentence,
+                    "text": sentence,
+                    "reference": None,
+                },
+                lang=lang,
+            )
+            return
         try:
             translated = await self.translators[lang].translate(sentence)
         except Exception:
@@ -207,7 +230,12 @@ class HostSession:
 
 
 @app.websocket("/ws/host")
-async def ws_host(websocket: WebSocket, room: str = "main") -> None:
+async def ws_host(
+    websocket: WebSocket, room: str = "main", input_lang: str = "en"
+) -> None:
+    if input_lang not in SOURCE_LANGUAGES:
+        logger.warning("host requested unsupported input_lang=%s; using en", input_lang)
+        input_lang = "en"
     the_room = rooms.get_or_create(room)
     if the_room.host_connected:
         await websocket.close(code=4409, reason="room already has a host")
@@ -215,16 +243,22 @@ async def ws_host(websocket: WebSocket, room: str = "main") -> None:
 
     await websocket.accept()
     the_room.host_connected = True
-    logger.info("host connected room=%s", room)
+    logger.info("host connected room=%s input_lang=%s", room, input_lang)
 
     session = HostSession(
         the_room,
-        {lang: get_translator(lang) for lang in LANGUAGES},
+        {
+            lang: get_translator(lang, input_lang)
+            for lang in LANGUAGES
+            if lang != input_lang  # the speaker's language passes through
+        },
         {
             lang: synth
             for lang in LANGUAGES
+            if lang != input_lang
             if (synth := get_synthesizer(lang)) is not None
         },
+        input_lang=input_lang,
     )
     worker: asyncio.Task[None] | None = None
     try:

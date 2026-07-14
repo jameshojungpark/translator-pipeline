@@ -1,4 +1,4 @@
-"""English → target-language sentence translation via Gemini Flash Lite (text only)."""
+"""Source → target-language sentence translation via Gemini Flash Lite (text only)."""
 
 import logging
 import re
@@ -52,12 +52,19 @@ def parse_translation(raw: str) -> Translation:
 
 
 class Translator:
-    def __init__(self, api_key: str, lang: str = "ko", model: str = MODEL) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        lang: str = "ko",
+        source: str = "en",
+        model: str = MODEL,
+    ) -> None:
         self._client = genai.Client(api_key=api_key)
         self._model = model
         self.lang = lang
+        self.source = source
         self._config = types.GenerateContentConfig(
-            system_instruction=build_translation_instruction(lang),
+            system_instruction=build_translation_instruction(lang, source),
             temperature=0.2,
             # Translation is latency-sensitive; don't spend time thinking.
             thinking_config=types.ThinkingConfig(thinking_budget=0),

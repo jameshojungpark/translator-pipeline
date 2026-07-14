@@ -42,11 +42,14 @@ class FakeSynthesizer:
         return b"\x00\x01"
 
 
-def make_session(room: Room, translators: dict, synthesizers: dict) -> HostSession:
+def make_session(
+    room: Room, translators: dict, synthesizers: dict, input_lang: str = "en"
+) -> HostSession:
     session = HostSession.__new__(HostSession)
     session.room = room
     session.translators = translators
     session.synthesizers = synthesizers
+    session.input_lang = input_lang
     session.sentence_queue = asyncio.Queue()
     session._next_id = 0
     return session
@@ -166,6 +169,35 @@ async def test_one_language_failing_does_not_block_the_other() -> None:
         ("translation", "zh"),
         ("tts", "zh"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_speakers_language_passes_through_without_translation() -> None:
+    room = Room("main")
+    ko, en = FakeClient(), FakeClient()
+    room.add_client(ko, "ko")
+    room.add_client(en, "en")
+    # Korean sermon: the translator dicts hold every target except ko itself.
+    session = make_session(
+        room,
+        {"en": FakeTranslator("en")},
+        {"en": FakeSynthesizer()},
+        input_lang="ko",
+    )
+    await session.sentence_queue.put((0, "하나님의 은혜입니다."))
+    await session.sentence_queue.put(None)
+    await session.translation_worker()
+
+    # ko viewers get the transcript back as the translation, no TTS
+    assert [(m["type"], m["lang"]) for m in ko.received] == [("translation", "ko")]
+    assert ko.received[0]["text"] == "하나님의 은혜입니다."
+    assert ko.received[0]["reference"] is None
+    # en viewers get a real translation + audio
+    assert [(m["type"], m["lang"]) for m in en.received] == [
+        ("translation", "en"),
+        ("tts", "en"),
+    ]
+    assert en.received[0]["text"] == "en:하나님의 은혜입니다."
 
 
 @pytest.mark.asyncio

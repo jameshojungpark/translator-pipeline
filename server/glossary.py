@@ -2,10 +2,24 @@
 
 from dataclasses import dataclass
 
+# Languages the speaker (host) can preach in: code → English name.
+# The code doubles as the target-language code skipped via passthrough
+# when a viewer selects the same language the sermon is preached in.
+SOURCE_LANGUAGES: dict[str, str] = {
+    "en": "English",
+    "fr": "French",
+    "ko": "Korean",
+}
+
 
 @dataclass(frozen=True)
 class LanguageConfig:
-    """Everything language-specific the pipeline needs for one target language."""
+    """Everything language-specific the pipeline needs for one target language.
+
+    style_rules may reference the speaker's language with a ``{source}``
+    placeholder — build_translation_instruction() fills it in with the
+    session's input-language name.
+    """
 
     code: str  # wire code used in messages and the client's ?lang= param
     name: str  # English name, for logs
@@ -46,8 +60,8 @@ KOREAN = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into Korean.",
-        "Translate the given English sentence into natural, fluent Korean. "
+        "from {source} into Korean.",
+        "Translate the given {source} sentence into natural, fluent Korean. "
         "Output ONLY the Korean translation — no explanations, no romanization, "
         "no quotation marks around the output (the only exception: “ ” around a "
         "Bible verse quotation, as instructed below).",
@@ -56,7 +70,7 @@ KOREAN = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Korean book names "
         "(e.g. John 3:16 → 요한복음 3장 16절).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "개역개정 (New Korean Revised Version) word for word. If you are not "
         "certain of the exact 개역개정 wording, translate it in 개역개정 style "
@@ -108,8 +122,8 @@ MANDARIN = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into Mandarin Chinese (Simplified script).",
-        "Translate the given English sentence into natural, fluent Mandarin. "
+        "from {source} into Mandarin Chinese (Simplified script).",
+        "Translate the given {source} sentence into natural, fluent Mandarin. "
         "Output ONLY the Chinese translation — no explanations, no pinyin, "
         "no quotation marks around the output (the only exception: “ ” around a "
         "Bible verse quotation, as instructed below).",
@@ -118,7 +132,7 @@ MANDARIN = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Chinese book names "
         "(e.g. John 3:16 → 约翰福音 3 章 16 节).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "和合本 (Chinese Union Version, Simplified, 神版) word for word. If you "
         "are not certain of the exact 和合本 wording, translate it in 和合本 "
@@ -170,8 +184,8 @@ CANTONESE = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English for a Cantonese-speaking congregation (Hong Kong usage).",
-        "Translate the given English sentence into standard written Chinese in "
+        "from {source} for a Cantonese-speaking congregation (Hong Kong usage).",
+        "Translate the given {source} sentence into standard written Chinese in "
         "Traditional characters (書面語), phrased so it reads naturally when "
         "spoken aloud in Cantonese. Output ONLY the Chinese translation — no "
         "explanations, no romanization, no quotation marks around the output "
@@ -182,7 +196,7 @@ CANTONESE = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Chinese book names "
         "(e.g. John 3:16 → 約翰福音 3 章 16 節).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "和合本 (Chinese Union Version, Traditional, 神版) word for word. If you "
         "are not certain of the exact 和合本 wording, translate it in 和合本 "
@@ -234,8 +248,8 @@ FARSI = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into Persian (Farsi).",
-        "Translate the given English sentence into natural, fluent Persian. "
+        "from {source} into Persian (Farsi).",
+        "Translate the given {source} sentence into natural, fluent Persian. "
         "Output ONLY the Persian translation — no explanations, no "
         "transliteration, no quotation marks around the output (the only "
         "exception: “ ” around a Bible verse quotation, as instructed below).",
@@ -244,7 +258,7 @@ FARSI = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Persian book names "
         "(e.g. John 3:16 → یوحنا ۳:۱۶).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "ترجمهٔ هزارهٔ نو (New Millennium Version) word for word. If you are not "
         "certain of the exact wording, translate it in that translation's style.",
@@ -296,8 +310,8 @@ PUNJABI = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into Punjabi (Gurmukhi script).",
-        "Translate the given English sentence into natural, fluent Punjabi. "
+        "from {source} into Punjabi (Gurmukhi script).",
+        "Translate the given {source} sentence into natural, fluent Punjabi. "
         "Output ONLY the Punjabi translation — no explanations, no "
         "transliteration, no quotation marks around the output (the only "
         "exception: “ ” around a Bible verse quotation, as instructed below).",
@@ -306,7 +320,7 @@ PUNJABI = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Punjabi book names "
         "(e.g. John 3:16 → ਯੂਹੰਨਾ 3:16).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "standard Punjabi Bible (ਪਵਿੱਤਰ ਬਾਈਬਲ, BSI) word for word. If you are "
         "not certain of the exact wording, translate it in that translation's "
@@ -358,8 +372,8 @@ SPANISH = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into Spanish (Latin American usage).",
-        "Translate the given English sentence into natural, fluent Spanish. "
+        "from {source} into Spanish (Latin American usage).",
+        "Translate the given {source} sentence into natural, fluent Spanish. "
         "Output ONLY the Spanish translation — no explanations, no quotation "
         "marks around the output (the only exception: “ ” around a Bible verse "
         "quotation, as instructed below).",
@@ -368,7 +382,7 @@ SPANISH = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard Spanish book names "
         "(e.g. John 3:16 → Juan 3:16).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "Reina-Valera 1960 word for word. If you are not certain of the exact "
         "Reina-Valera 1960 wording, translate it in that translation's style.",
@@ -421,8 +435,8 @@ FRENCH = LanguageConfig(
     },
     style_rules=[
         "You are a simultaneous interpreter translating a live Christian sermon "
-        "from English into French.",
-        "Translate the given English sentence into natural, fluent French. "
+        "from {source} into French.",
+        "Translate the given {source} sentence into natural, fluent French. "
         "Output ONLY the French translation — no explanations, no quotation "
         "marks around the output (the only exception: “ ” around a Bible verse "
         "quotation, as instructed below).",
@@ -431,7 +445,7 @@ FRENCH = LanguageConfig(
         "Preserve the speaker's meaning and tone; do not add or omit content.",
         "Bible verse references should use standard French book names "
         "(e.g. John 3:16 → Jean 3:16).",
-        "When the English sentence is a quotation of a Bible verse, do NOT "
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
         "translate it freshly — reproduce the corresponding verse from the "
         "Louis Segond (1910) translation word for word. If you are not certain "
         "of the exact Louis Segond wording, translate it in that translation's "
@@ -454,9 +468,83 @@ FRENCH = LanguageConfig(
     ],
 )
 
+ENGLISH = LanguageConfig(
+    code="en",
+    name="English",
+    tts_voice="en-US-Chirp3-HD-Charon",
+    tts_speed=1.0,
+    # Identity glossary: the keys name each concept in English, and for an
+    # English target the canonical rendering is the concept itself. It still
+    # anchors terminology (e.g. 은혜 → "grace", never "favor").
+    glossary={
+        "grace": "grace",
+        "gospel": "gospel",
+        "salvation": "salvation",
+        "repentance": "repentance",
+        "worship": "worship",
+        "sermon": "sermon",
+        "congregation": "congregation",
+        "the Lord": "the Lord",
+        "God": "God",
+        "Jesus Christ": "Jesus Christ",
+        "Holy Spirit": "Holy Spirit",
+        "kingdom of God": "kingdom of God",
+        "faith": "faith",
+        "prayer": "prayer",
+        "the Word": "the Word",
+        "scripture": "Scripture",
+        "blessing": "blessing",
+        "covenant": "covenant",
+        "cross": "cross",
+        "resurrection": "resurrection",
+        "amen": "amen",
+        "hallelujah": "hallelujah",
+    },
+    style_rules=[
+        "You are a simultaneous interpreter translating a live Christian sermon "
+        "from {source} into English.",
+        "Translate the given {source} sentence into natural, fluent English. "
+        "Output ONLY the English translation — no explanations, no quotation "
+        "marks around the output (the only exception: “ ” around a Bible verse "
+        "quotation, as instructed below).",
+        "Use the natural, reverent register customary in English-language "
+        "preaching.",
+        "Preserve the speaker's meaning and tone; do not add or omit content.",
+        "Bible verse references should use standard English book names "
+        "(e.g. 요한복음 3:16 / Jean 3:16 → John 3:16).",
+        "When the {source} sentence is a quotation of a Bible verse, do NOT "
+        "translate it freshly — reproduce the corresponding verse from the "
+        "New International Version (NIV) word for word. If you are not certain "
+        "of the exact NIV wording, translate it in NIV style.",
+        "Wrap the NIV verse quotation — and ONLY the quotation — in “ ” "
+        "quotation marks. When the sentence mixes the speaker's own words with a "
+        "verse (e.g. 'Now verse 6.' followed by the verse), the speaker's words "
+        "stay outside the quotation marks: "
+        "Now verse 6. “Then they gathered around him and asked him…”",
+        "When you reproduced NIV wording and you are certain which verse it is, "
+        "add one extra line after the translation: '@ref' followed by the "
+        "standard English book name, chapter, and verse (e.g. '@ref John 3:16', "
+        "'@ref Romans 8:1-2'). This marker line is the ONLY thing allowed "
+        "besides the translation itself. If the sentence is not a verse "
+        "quotation, or you are not certain of the exact reference, output no "
+        "marker line.",
+        "If the sentence is an incomplete fragment, still translate it as "
+        "naturally as possible.",
+    ],
+)
+
 LANGUAGES: dict[str, LanguageConfig] = {
     config.code: config
-    for config in (KOREAN, MANDARIN, CANTONESE, FARSI, PUNJABI, SPANISH, FRENCH)
+    for config in (
+        ENGLISH,
+        KOREAN,
+        MANDARIN,
+        CANTONESE,
+        FARSI,
+        PUNJABI,
+        SPANISH,
+        FRENCH,
+    )
 }
 
 # Aliases for the original Korean-only module-level API.
@@ -464,12 +552,26 @@ GLOSSARY: dict[str, str] = KOREAN.glossary
 STYLE_RULES: list[str] = KOREAN.style_rules
 
 
-def build_translation_instruction(lang: str = "ko") -> str:
-    """Build the system instruction for the Gemini translation model."""
+def build_translation_instruction(lang: str = "ko", source: str = "en") -> str:
+    """Build the system instruction for the Gemini translation model.
+
+    ``source`` is the speaker's language (a SOURCE_LANGUAGES code); it fills
+    the ``{source}`` placeholders in the style rules. The glossary keys are
+    always English concept names, so for non-English sources the model is
+    told to match concepts rather than literal key strings.
+    """
     config = LANGUAGES[lang]
-    lines: list[str] = list(config.style_rules)
+    source_name = SOURCE_LANGUAGES[source]
+    lines: list[str] = [rule.format(source=source_name) for rule in config.style_rules]
     lines.append("")
-    lines.append("Always use this glossary for the following terms:")
+    if source == "en":
+        lines.append("Always use this glossary for the following terms:")
+    else:
+        lines.append(
+            "Always use this glossary. Each entry names a concept in English; "
+            f"whenever the equivalent concept appears in the {source_name} "
+            "sentence, render it with the given term:"
+        )
     for english, target in config.glossary.items():
         lines.append(f"- {english} → {target}")
     return "\n".join(lines)

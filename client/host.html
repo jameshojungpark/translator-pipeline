@@ -30,6 +30,12 @@
   }
   #micBtn.live { background: #8c2c2c; }
   #micBtn:disabled { background: #333; color: #777; cursor: default; }
+  #inputRow { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #999; }
+  #inputSel {
+    font-size: 14px; background: #1b1b1b; color: #eee;
+    border: 1px solid #333; border-radius: 8px; padding: 4px 10px; cursor: pointer;
+  }
+  #inputSel:disabled { color: #777; cursor: default; }
   #meter { width: 260px; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
   #meterFill { height: 100%; width: 0; background: #3c3; transition: width 80ms linear; }
   #info { font-size: 13px; color: #999; min-height: 1.2em; }
@@ -48,6 +54,14 @@
   <div id="status"><span id="dot"></span><span id="statusText">idle</span></div>
 </header>
 <div id="panel">
+  <div id="inputRow">
+    <label for="inputSel">Speaker language 설교 언어</label>
+    <select id="inputSel">
+      <option value="en">English</option>
+      <option value="fr">Français · French</option>
+      <option value="ko">한국어 · Korean</option>
+    </select>
+  </div>
   <button id="micBtn">🎙️ 방송 시작 (Start broadcasting)</button>
   <div id="meter"><div id="meterFill"></div></div>
   <div id="info"></div>
@@ -55,8 +69,17 @@
 <div id="monitor"><h2>파이프라인 모니터 (what viewers see — a language appears once a viewer selects it)</h2></div>
 
 <script>
-const room = new URLSearchParams(location.search).get("room") || "main";
+const params = new URLSearchParams(location.search);
+const room = params.get("room") || "main";
 const micBtn = document.getElementById("micBtn");
+const inputSel = document.getElementById("inputSel");
+if ([...inputSel.options].some((o) => o.value === params.get("input"))) {
+  inputSel.value = params.get("input");
+}
+inputSel.onchange = () => {
+  params.set("input", inputSel.value);
+  history.replaceState(null, "", `?${params.toString()}`);
+};
 const dot = document.getElementById("dot");
 const statusText = document.getElementById("statusText");
 const info = document.getElementById("info");
@@ -145,7 +168,7 @@ async function startCapture() {
 }
 
 function connectHostSocket() {
-  ws = new WebSocket(`${wsBase}/ws/host?room=${room}`);
+  ws = new WebSocket(`${wsBase}/ws/host?room=${room}&input_lang=${inputSel.value}`);
   ws.onopen = () => {
     setStatus(true, `room: ${room} — 송출 중`);
     setInfo("");
@@ -173,6 +196,7 @@ async function start() {
     return;
   }
   live = true;
+  inputSel.disabled = true;  // language is fixed for the Deepgram session
   connectHostSocket();
   startedAt = Date.now();
   timer = setInterval(() => {
@@ -194,6 +218,7 @@ function stop() {
   if (ctx) { ctx.close(); ctx = null; }
   meterFill.style.width = "0";
   setStatus(false, "idle");
+  inputSel.disabled = false;
   micBtn.textContent = "🎙️ 방송 시작 (Start broadcasting)";
   micBtn.classList.remove("live");
   micBtn.disabled = false;
@@ -207,7 +232,7 @@ micBtn.onclick = () => (live ? stop() : start());
 const lines = new Map(); // sentence id -> line element
 
 const LANG_TAGS = {
-  ko: "한", zh: "普", yue: "粵", fa: "FA", pa: "ਪੰ", es: "ES", fr: "FR",
+  en: "EN", ko: "한", zh: "普", yue: "粵", fa: "FA", pa: "ਪੰ", es: "ES", fr: "FR",
 };
 
 function monitorLine(id, en) {
