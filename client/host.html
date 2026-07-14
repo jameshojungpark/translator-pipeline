@@ -38,8 +38,8 @@
   #monitor h2 { font-size: 12px; font-weight: 500; color: #666; margin-bottom: 10px; }
   .line { max-width: 720px; margin: 0 auto 10px; }
   .line .en { font-size: 13px; color: #8a8a8a; }
-  .line .ko { font-size: 15px; }
-  .line .ko:empty::after { content: "번역 중…"; color: #555; font-size: 13px; }
+  .line .tr { font-size: 15px; }
+  .line .tr .tag { color: #666; font-size: 11px; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -52,7 +52,7 @@
   <div id="meter"><div id="meterFill"></div></div>
   <div id="info"></div>
 </div>
-<div id="monitor"><h2>파이프라인 모니터 (what viewers see)</h2></div>
+<div id="monitor"><h2>파이프라인 모니터 (what viewers see — a language appears once a viewer selects it)</h2></div>
 
 <script>
 const room = new URLSearchParams(location.search).get("room") || "main";
@@ -206,10 +206,14 @@ micBtn.onclick = () => (live ? stop() : start());
 
 const lines = new Map(); // sentence id -> line element
 
+const LANG_TAGS = {
+  ko: "한", zh: "普", yue: "粵", fa: "FA", pa: "ਪੰ", es: "ES", fr: "FR",
+};
+
 function monitorLine(id, en) {
   const div = document.createElement("div");
   div.className = "line";
-  div.innerHTML = `<div class="en"></div><div class="ko"></div>`;
+  div.innerHTML = `<div class="en"></div>`;
   div.querySelector(".en").textContent = en;
   monitor.appendChild(div);
   while (monitor.children.length > 60) monitor.children[1].remove(); // keep <h2>
@@ -220,13 +224,25 @@ function monitorLine(id, en) {
 }
 
 function connectMonitor() {
-  const monitorWs = new WebSocket(`${wsBase}/ws/client?room=${room}`);
+  // lang=all: the operator sees every language's translations
+  const monitorWs = new WebSocket(`${wsBase}/ws/client?room=${room}&lang=all`);
   monitorWs.onmessage = (event) => {
     const m = JSON.parse(event.data);
     if (m.type === "transcript") monitorLine(m.id, m.text);
     else if (m.type === "translation") {
       const line = lines.get(m.id) || monitorLine(m.id, m.source);
-      line.querySelector(".ko").textContent =
+      const langCode = m.lang || "ko";
+      let el = line.querySelector(`.tr[data-lang="${langCode}"]`);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "tr";
+        el.dataset.lang = langCode;
+        el.innerHTML = `<span class="tag"></span><span class="text"></span>`;
+        el.querySelector(".tag").textContent = LANG_TAGS[langCode] || langCode;
+        el.querySelector(".text").dir = "auto";  // Farsi is right-to-left
+        line.appendChild(el);
+      }
+      el.querySelector(".text").textContent =
         m.reference ? `${m.text} 〔${m.reference}〕` : m.text;
       monitor.scrollTop = monitor.scrollHeight;
     }
