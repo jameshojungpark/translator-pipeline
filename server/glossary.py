@@ -143,7 +143,7 @@ CANTONESE = LanguageConfig(
     code="yue",
     name="Cantonese",
     tts_voice="yue-HK-Chirp3-HD-Charon",
-    tts_speed=1.1,
+    tts_speed=1.2,
     glossary={
         "grace": "恩典",
         "gospel": "福音",
