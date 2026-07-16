@@ -9,7 +9,7 @@ URL="http://127.0.0.1:$PORT"
 
 if curl -s -o /dev/null "$URL/health"; then
     echo "Server already running at $URL"
-    open "$URL/host.html"
+    open "$URL/host"
     exit 0
 fi
 
@@ -22,9 +22,9 @@ for _ in {1..40}; do
     sleep 0.25
 done
 
-open "$URL/host.html"
+open "$URL/host"
 echo ""
-echo "Host page: $URL/host.html"
+echo "Host page: $URL/host"
 echo "Viewers:   $URL/"
 echo "Close this window (or Ctrl+C) to stop the server."
 wait $SERVER_PID

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from server import tts
@@ -303,6 +304,12 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/host")
+async def host_page() -> FileResponse:
+    """Extension-less alias for the host app (/host.html also works)."""
+    return FileResponse(Path(__file__).parent.parent / "client" / "dist" / "host.html")
 
 
 # Serve the built client app at / (mounted last so API routes take

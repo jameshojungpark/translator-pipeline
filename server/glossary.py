@@ -472,7 +472,7 @@ ENGLISH = LanguageConfig(
     code="en",
     name="English",
     tts_voice="en-US-Chirp3-HD-Charon",
-    tts_speed=1.0,
+    tts_speed=1.1,
     # Identity glossary: the keys name each concept in English, and for an
     # English target the canonical rendering is the concept itself. It still
     # anchors terminology (e.g. 은혜 → "grace", never "favor").
