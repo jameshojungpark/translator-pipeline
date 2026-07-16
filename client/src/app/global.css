@@ -1,0 +1,12 @@
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+body {
+  font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: #111;
+  color: #eee;
+}

@@ -13,7 +13,9 @@ Read `SPEC.md` fully before writing any code. This is a RELAY architecture — t
 ## Tech stack
 
 - **Server:** Python 3.11+, FastAPI, uvicorn, `google-genai` SDK (Live API), python-dotenv
-- **Frontend (host + client):** plain HTML/JS, no framework. Web Audio API on both sides (AudioWorklet for capture/downsampling on host, buffered PCM playback on client).
+- **Frontend (client viewer):** React + TypeScript + Vite, organized by Feature-Sliced Design (`client/src` — layers `app/pages/features/entities/shared`; layer rules enforced by Steiger). Web Audio playback lives in `client/src/shared/lib/audio` as imperative modules — do not move scheduling into React state.
+- **Frontend (host):** plain HTML/JS at `client/public/host.html` (served verbatim; not yet migrated to React). AudioWorklet capture/downsampling to 16 kHz.
+- The server serves the built frontend from `client/dist` — run `npm run build` in `client/` after frontend changes (or use `npm run dev` for the Vite dev server, which proxies `/ws` to uvicorn on port 8000).
 - **Transport:** WebSockets (host→server audio, server→clients results)
 - **Config:** `.env` with `GEMINI_API_KEY` (already present — load it, never hardcode, never log it)
 
@@ -39,3 +41,4 @@ Read `SPEC.md` fully before writing any code. This is a RELAY architecture — t
 - Run server: `uvicorn server.main:app --reload`
 - Tests: `pytest`
 - Lint: `ruff check .`
+- Client (from `client/`): `npm run dev` (Vite dev server), `npm run build` (type-check + build to `client/dist`), `npm run lint:fsd` (Steiger FSD layer lint)

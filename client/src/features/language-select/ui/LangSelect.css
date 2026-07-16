@@ -1,0 +1,9 @@
+.lang-select {
+  font-size: 13px;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #eee;
+  padding: 4px 10px;
+  cursor: pointer;
+}

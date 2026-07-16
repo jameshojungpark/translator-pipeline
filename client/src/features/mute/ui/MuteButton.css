@@ -1,0 +1,9 @@
+.mute-btn {
+  font-size: 18px;
+  background: none;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #eee;
+  padding: 4px 10px;
+  cursor: pointer;
+}

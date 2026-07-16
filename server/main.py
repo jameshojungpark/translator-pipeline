@@ -305,9 +305,15 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Serve the client app at / (mounted last so API routes take precedence).
+# Serve the built client app at / (mounted last so API routes take
+# precedence). Produced by `npm run build` in client/; check_dir=False so the
+# server still boots for API-only use (e.g. tests) without a frontend build.
 app.mount(
     "/",
-    StaticFiles(directory=Path(__file__).parent.parent / "client", html=True),
+    StaticFiles(
+        directory=Path(__file__).parent.parent / "client" / "dist",
+        html=True,
+        check_dir=False,
+    ),
     name="client",
 )
