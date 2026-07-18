@@ -136,38 +136,11 @@
   .work {
     display: flex; flex-direction: column; padding: 24px; gap: 18px; overflow: hidden;
   }
-  .meta-row {
-    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
-  }
-  .meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .meta h1 { font-size: 22px; font-weight: 680; letter-spacing: -0.4px; }
-  .meta-line {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
-    font-size: 13px; font-weight: 500; color: var(--muted);
-  }
-  /* Session fields read as fields: dashed capsule + pencil, solid on focus */
-  .editable {
-    display: inline-block;
-    padding: 1px 8px; border-radius: 8px;
-    border: 1px dashed var(--line-dash); background: var(--card);
-    cursor: text; white-space: nowrap;
-  }
-  .editable:hover { border-color: var(--accent-lighter); background: var(--accent-soft); }
-  .editable:focus {
-    outline: none; border: 1px solid var(--accent); background: #fff;
-  }
-  .meta h1.editable { padding: 2px 10px; margin-left: -10px; }
-  .edit-hint {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 600; color: var(--muted-2);
-  }
-
   .chips { display: flex; align-items: stretch; gap: 10px; flex-shrink: 0; }
   .chip {
     display: flex; align-items: center; gap: 9px;
-    padding: 8px 13px; border-radius: 11px;
-    background: var(--card); border: 1px solid var(--line);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    padding: 6px 11px; border-radius: 10px;
+    background: var(--card-subtle); border: 1px solid var(--line);
   }
   .chip-labels { display: flex; flex-direction: column; gap: 1px; }
   .chip-select {
@@ -212,7 +185,7 @@
   }
   .tc-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px; border-bottom: 1px solid var(--line-soft);
+    gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line-soft);
   }
   .tc-title { display: flex; align-items: center; gap: 10px; }
   .overline {
@@ -265,13 +238,6 @@
   .count-row { display: flex; align-items: baseline; gap: 8px; }
   #totalCount { font-size: 34px; font-weight: 720; letter-spacing: -1px; }
   .count-row span:last-child { font-size: 13px; font-weight: 600; color: var(--muted); }
-  .trend {
-    display: flex; align-items: center; gap: 5px; margin-top: 6px;
-    font-size: 12px; font-weight: 600; color: var(--green-text);
-  }
-  .trend.flat { color: var(--muted-2); }
-  .trend.flat svg { display: none; }
-
   .rail-langs { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .rail-head {
     display: flex; align-items: center; justify-content: space-between;
@@ -280,7 +246,7 @@
   #langCount { font-size: 12px; font-weight: 700; color: var(--accent); }
   #langList {
     display: flex; flex-direction: column; gap: 8px;
-    padding: 0 16px 4px; overflow-y: auto;
+    padding: 0 16px 16px; overflow-y: auto;
   }
   .lang-row {
     display: flex; align-items: center; gap: 12px;
@@ -305,21 +271,6 @@
   .lang-live.idle { color: var(--muted-2); }
   .lang-live.idle i { background: var(--muted-2); }
   .rail-empty { padding: 8px 6px; font-size: 12.5px; color: var(--muted-2); }
-
-  .rail-foot { padding: 14px 16px 18px; }
-  #addLangBtn {
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-    width: 100%; padding: 12px; border: 1px dashed var(--line-dash);
-    border-radius: 12px; background: var(--card);
-    font-size: 13px; font-weight: 650; color: var(--chip-text);
-  }
-  #addLangNote {
-    margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--muted);
-  }
-  #addLangNote code {
-    font-size: 11px; background: var(--card-subtle); border: 1px solid var(--line-row);
-    border-radius: 6px; padding: 1px 5px; user-select: all;
-  }
 
   @keyframes livePulse {
     0%, 100% { transform: scale(1); opacity: 1; }
@@ -372,47 +323,6 @@
 
 <div class="console-body">
   <main class="work">
-    <div class="meta-row">
-      <div class="meta">
-        <h1 id="titleEl" class="editable" contenteditable="true" spellcheck="false">The Fullness of Grace</h1>
-        <p class="meta-line">
-          <span id="speakerEl" class="editable" contenteditable="true" spellcheck="false">Pastor Daniel Okafor</span>
-          · <span id="verseEl" class="editable" contenteditable="true" spellcheck="false">John 1</span>
-          · <span id="serviceEl" class="editable" contenteditable="true" spellcheck="false">Sunday Service</span>
-          <span class="edit-hint">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-            </svg>
-            click to edit
-          </span>
-        </p>
-      </div>
-      <div class="chips">
-        <div class="chip">
-          <span class="mic-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          <span class="chip-labels">
-            <select id="micSel" class="chip-select" title="Input microphone"></select>
-            <span id="micStatus" class="chip-sub">Mic off</span>
-          </span>
-        </div>
-        <div class="chip">
-          <span class="chip-globe" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a13.5 13.5 0 0 1 0 18a13.5 13.5 0 0 1 0-18Z"/>
-            </svg>
-          </span>
-          <span class="chip-labels">
-            <select id="inputSel" class="chip-select" title="Speaker language">
-              <option value="en">English</option>
-              <option value="fr">Français · French</option>
-              <option value="ko">한국어 · Korean</option>
-            </select>
-            <span class="chip-sub">Speaker language</span>
-          </span>
-        </div>
-      </div>
-    </div>
-
     <div id="info" hidden></div>
 
     <section class="transcript-card">
@@ -420,8 +330,32 @@
         <div class="tc-title">
           <span class="overline">LIVE TRANSCRIPT</span>
           <span id="srcPill" class="src-pill">English (source)</span>
+          <span class="tc-room"></span>
         </div>
-        <span class="tc-room"></span>
+        <div class="chips">
+          <div class="chip">
+            <span class="mic-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="chip-labels">
+              <select id="micSel" class="chip-select" title="Input microphone"></select>
+              <span id="micStatus" class="chip-sub">Mic off</span>
+            </span>
+          </div>
+          <div class="chip">
+            <span class="chip-globe" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a13.5 13.5 0 0 1 0 18a13.5 13.5 0 0 1 0-18Z"/>
+              </svg>
+            </span>
+            <span class="chip-labels">
+              <select id="inputSel" class="chip-select" title="Speaker language">
+                <option value="en">English</option>
+                <option value="fr">Français · French</option>
+                <option value="ko">한국어 · Korean</option>
+              </select>
+              <span class="chip-sub">Speaker language</span>
+            </span>
+          </div>
+        </div>
       </div>
       <div class="tc-body">
         <div class="tc-mask"></div>
@@ -433,12 +367,6 @@
   <aside class="rail">
     <div class="rail-summary">
       <div class="count-row"><span id="totalCount">0</span><span>listeners connected</span></div>
-      <div id="trend" class="trend flat">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M7 17 17 7"/><path d="M9 7h8v8"/>
-        </svg>
-        <span id="trendText">no change in the last 5 min</span>
-      </div>
     </div>
     <div class="rail-langs">
       <div class="rail-head">
@@ -447,15 +375,6 @@
       </div>
       <div id="langList">
         <div class="rail-empty">Languages appear here as listeners pick them.</div>
-      </div>
-      <div class="rail-foot">
-        <button id="addLangBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-            <path d="M12 5v14"/><path d="M5 12h14"/>
-          </svg>
-          Add a language
-        </button>
-        <p id="addLangNote" hidden></p>
       </div>
     </div>
   </aside>
@@ -489,12 +408,8 @@ const micStatus = document.getElementById("micStatus");
 const meterBars = document.querySelectorAll(".mic-meter i");
 const monitor = document.getElementById("monitor");
 const totalCount = document.getElementById("totalCount");
-const trend = document.getElementById("trend");
-const trendText = document.getElementById("trendText");
 const langCount = document.getElementById("langCount");
 const langList = document.getElementById("langList");
-const addLangBtn = document.getElementById("addLangBtn");
-const addLangNote = document.getElementById("addLangNote");
 const wsBase = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
 
 document.querySelector(".tc-room").textContent = `Room · ${room}`;
@@ -538,30 +453,6 @@ async function refreshMics() {
 micSel.onchange = () => localStorage.setItem(MIC_KEY, micSel.value);
 navigator.mediaDevices?.addEventListener?.("devicechange", refreshMics);
 refreshMics();
-
-// ---- editable session meta (title / speaker / verse / service), per room ----
-
-const META_KEY = `woaf-host-meta:${room}`;
-const metaFields = {
-  title: document.getElementById("titleEl"),
-  speaker: document.getElementById("speakerEl"),
-  verse: document.getElementById("verseEl"),
-  service: document.getElementById("serviceEl"),
-};
-try {
-  const saved = JSON.parse(localStorage.getItem(META_KEY) || "{}");
-  for (const [key, el] of Object.entries(metaFields)) {
-    if (saved[key]) el.textContent = saved[key];
-  }
-} catch { /* corrupted storage — keep defaults */ }
-for (const el of Object.values(metaFields)) {
-  el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } });
-  el.addEventListener("blur", () => {
-    const data = {};
-    for (const [key, field] of Object.entries(metaFields)) data[key] = field.textContent.trim();
-    localStorage.setItem(META_KEY, JSON.stringify(data));
-  });
-}
 
 // ---- capture: mic → AudioWorklet (downsample to 16 kHz) → 100 ms Int16 chunks ----
 
@@ -817,7 +708,6 @@ function addTranslation(m) {
 // ---- right rail: listener stats per language ----
 
 const langState = new Map(); // code -> { listeners, lastAt }
-const samples = [];          // [t, total] history for the 5-minute trend
 let total = 0;
 
 function langEntry(code) {
@@ -863,18 +753,6 @@ function renderRail() {
 
 function renderSummary() {
   totalCount.textContent = total;
-  const now = Date.now();
-  samples.push([now, total]);
-  while (samples.length > 2 && samples[0][0] < now - 360000) samples.shift();
-  const baseline = samples.find(([t]) => t >= now - 300000) || samples[0];
-  const delta = total - baseline[1];
-  if (delta > 0) {
-    trend.classList.remove("flat");
-    trendText.textContent = `+${delta} in the last 5 min`;
-  } else {
-    trend.classList.add("flat");
-    trendText.textContent = `${delta < 0 ? delta : "no change"} in the last 5 min`;
-  }
 }
 
 function connectMonitor() {
@@ -900,18 +778,6 @@ function connectMonitor() {
   monitorWs.onclose = () => setTimeout(connectMonitor, 2000);
 }
 connectMonitor();
-
-// ---- "Add a language": languages start when a listener selects them ----
-
-addLangBtn.onclick = () => {
-  if (!addLangNote.hidden) { addLangNote.hidden = true; return; }
-  const link = `${location.origin}/?room=${room}`;
-  addLangNote.replaceChildren(
-    "A language starts broadcasting the moment a listener picks it — no setup needed here. Share the listener link: ",
-    Object.assign(document.createElement("code"), { textContent: link }),
-  );
-  addLangNote.hidden = false;
-};
 </script>
 </body>
 </html>
