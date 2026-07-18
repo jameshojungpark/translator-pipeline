@@ -67,10 +67,11 @@
     opacity: 0;
   }
 }
-/* Original-language echo under each line. Settled lines inherit their
-   caption's fade color so the echo ages with the line. */
+/* Original-language transcript above each translation — tucked close to
+   its own line (well inside the 20px sentence gap). Settled lines inherit
+   their caption's fade color so it ages with the line. */
 .sentence-source {
-  margin-top: 9px;
+  margin-bottom: 4px;
   font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.4;
