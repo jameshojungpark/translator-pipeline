@@ -4,10 +4,11 @@ import { feedReducer, SentenceRow } from "@/entities/sentence";
 import { AutoScrollButton, useAutoScroll } from "@/features/auto-scroll";
 import { LangOverlay, LangSelect, useLangParam } from "@/features/language-select";
 import { MuteButton, useMute } from "@/features/mute";
+import { TextSizeControl, useTextSize } from "@/features/text-size";
 import { openRoomSocket } from "@/shared/api";
 import { LANGS, type LangCode } from "@/shared/config";
 import { PlaybackQueue } from "@/shared/lib/audio";
-import { LiveBadge, Waveform } from "@/shared/ui";
+import { LiveBadge } from "@/shared/ui";
 
 import "./ViewerPage.css";
 
@@ -22,6 +23,7 @@ export function ViewerPage() {
   const { muted, toggle: toggleMute } = useMute(queue);
   const feedRef = useRef<HTMLDivElement>(null);
   const autoScroll = useAutoScroll(feedRef, sentences);
+  const [textSize, setTextSize] = useTextSize();
 
   // Language switch reconnects the socket with the new lang and clears the
   // feed (old entries would be in the wrong language). No page reload, so an
@@ -119,7 +121,7 @@ export function ViewerPage() {
 
       <div className="viewer-feed-wrap">
         <div className="viewer-feed-mask" />
-        <div className="viewer-feed" ref={feedRef}>
+        <div className={`viewer-feed size-${textSize}`} ref={feedRef}>
           {sentences.map((sentence, index) => (
             <SentenceRow
               key={index}
@@ -133,15 +135,11 @@ export function ViewerPage() {
 
       <div className="viewer-bottom">
         <div className="live-bar">
-          <Waveform active={live} />
-          <div className="live-bar-status">
-            <strong>
-              {!connected ? "Reconnecting…" : live ? "Translating live" : "Waiting for broadcast"}
-            </strong>
-            <span>{autoScroll.enabled ? "Auto-scrolling · tap to pause" : "Paused · tap to resume"}</span>
+          <TextSizeControl value={textSize} onChange={setTextSize} />
+          <div className="live-bar-actions">
+            <MuteButton muted={muted} onToggle={toggleMute} />
+            <AutoScrollButton enabled={autoScroll.enabled} onToggle={autoScroll.toggle} />
           </div>
-          {audioEnabled && <MuteButton muted={muted} onToggle={toggleMute} />}
-          <AutoScrollButton enabled={autoScroll.enabled} onToggle={autoScroll.toggle} />
         </div>
       </div>
 

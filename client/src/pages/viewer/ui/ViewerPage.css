@@ -82,6 +82,12 @@
   margin: 0 auto;
   padding: 8px 22px 12px;
 }
+.viewer-feed.size-small {
+  --caption-scale: 0.85;
+}
+.viewer-feed.size-large {
+  --caption-scale: 1.2;
+}
 
 /* ── Bottom live bar ────────────────────────────────── */
 .viewer-bottom {
@@ -94,25 +100,15 @@
 .live-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 13px;
-  padding: 13px 16px;
+  padding: 10px 12px;
   border-radius: 16px;
   background: var(--bar);
   box-shadow: var(--shadow-bar);
 }
-.live-bar-status {
-  flex: 1;
-  min-width: 0;
+.live-bar-actions {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.live-bar-status strong {
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-}
-.live-bar-status span {
-  font-size: 11px;
-  color: var(--muted-2);
+  align-items: center;
+  gap: 10px;
 }

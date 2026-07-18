@@ -5,23 +5,23 @@
   margin: 0 0 20px;
   font-family: var(--font-caption);
   font-weight: 400;
-  font-size: 19px;
+  font-size: calc(19px * var(--caption-scale, 1));
   line-height: 1.5;
   color: var(--fade-old);
   animation: sentence-in 280ms ease-out;
   transition: color 300ms ease, font-size 300ms ease;
 }
 .sentence:nth-last-child(3) {
-  font-size: 20px;
+  font-size: calc(20px * var(--caption-scale, 1));
   color: var(--fade-mid);
 }
 .sentence:nth-last-child(2),
 .sentence:last-child {
-  font-size: 21px;
+  font-size: calc(21px * var(--caption-scale, 1));
   color: var(--fade-recent);
 }
 .sentence.active {
-  font-size: 27px;
+  font-size: calc(27px * var(--caption-scale, 1));
   line-height: 1.42;
   font-weight: 500;
   letter-spacing: -0.2px;
@@ -52,7 +52,7 @@
 .sentence-caret {
   display: inline-block;
   width: 2px;
-  height: 26px;
+  height: calc(26px * var(--caption-scale, 1));
   background: var(--accent);
   vertical-align: -4px;
   margin-left: 3px;
@@ -73,7 +73,7 @@
 .sentence-source {
   margin-bottom: 4px;
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: calc(13px * var(--caption-scale, 1));
   line-height: 1.4;
   font-weight: 400;
   font-style: italic;
