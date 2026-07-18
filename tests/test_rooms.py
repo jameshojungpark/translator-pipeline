@@ -64,6 +64,20 @@ async def test_broadcast_without_lang_reaches_every_client() -> None:
     assert zh.received == [{"type": "transcript", "text": "hi"}]
 
 
+@pytest.mark.asyncio
+async def test_broadcast_stats_counts_languages_excluding_monitors() -> None:
+    room = Room("main")
+    ko1, ko2, es, monitor = FakeClient(), FakeClient(), FakeClient(), FakeClient()
+    room.add_client(ko1, "ko")
+    room.add_client(ko2, "ko")
+    room.add_client(es, "es")
+    room.add_client(monitor, "all")
+    await room.broadcast_stats()
+    expected = {"type": "stats", "total": 3, "langs": {"ko": 2, "es": 1}}
+    assert monitor.received == [expected]
+    assert ko1.received == [expected]
+
+
 def test_wanted_langs_ignores_all_monitors() -> None:
     room = Room("main")
     room.add_client(FakeClient(), "ko")

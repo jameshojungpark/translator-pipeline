@@ -289,6 +289,7 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
     logger.info(
         "client joined room=%s lang=%s (%d total)", room, lang, the_room.client_count
     )
+    await the_room.broadcast_stats()
     try:
         # Clients are receive-only; we read just to detect disconnect.
         while True:
@@ -298,6 +299,7 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
     finally:
         the_room.remove_client(websocket)
         logger.info("client left room=%s (%d remain)", room, the_room.client_count)
+        await the_room.broadcast_stats()
         rooms.cleanup(room)
 
 

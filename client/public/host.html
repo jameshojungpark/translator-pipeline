@@ -1,91 +1,567 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sermon Translator — Host</title>
+<title>Worship On Air — Host Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --muted-2: #94a3b8;
+    --chip-text: #475569;
+    --accent: #4f46e5;
+    --accent-2: #7c74f2;
+    --accent-soft: #eef2ff;
+    --accent-light: #818cf8;
+    --accent-lighter: #a5b4fc;
+    --green-text: #16a34a;
+    --green-dot: #22c55e;
+    --red: #ef4444;
+    --red-text: #dc2626;
+    --red-tint: rgba(239, 68, 68, 0.1);
+    --red-border: rgba(239, 68, 68, 0.3);
+    --card: #fff;
+    --card-subtle: #f8f9fc;
+    --bg: #f6f7fb;
+    --line: #eceef4;
+    --line-soft: #f1f2f7;
+    --line-mid: #e5e8f0;
+    --line-row: #eef0f6;
+    --line-dash: #c7cbd8;
+    --fade-old: #b6becc;
+    --fade-mid: #8592a6;
+    --font-ui: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    --font-transcript: "Newsreader", Georgia, serif;
+  }
   * { box-sizing: border-box; margin: 0; }
   body {
-    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-    background: #111; color: #eee;
+    font-family: var(--font-ui);
+    background: var(--bg);
+    color: var(--ink);
     display: flex; flex-direction: column; height: 100dvh;
   }
-  header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 18px; background: #1b1b1b; border-bottom: 1px solid #2a2a2a;
+  button { font-family: var(--font-ui); cursor: pointer; }
+  select { font-family: var(--font-ui); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── Top bar ─────────────────────────────────────── */
+  .topbar {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: var(--card); border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 16px; font-weight: 600; flex: 1; }
-  #status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #999; }
-  #dot { width: 9px; height: 9px; border-radius: 50%; background: #d33; }
-  #dot.on { background: #3c3; }
-  #panel {
-    display: flex; flex-direction: column; align-items: center; gap: 14px;
-    padding: 26px 18px; border-bottom: 1px solid #2a2a2a;
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .logo {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
   }
-  #micBtn {
-    font-size: 20px; padding: 16px 36px; border-radius: 12px; border: none;
-    background: #2c6e31; color: #fff; cursor: pointer;
+  .wordmark { font-size: 15px; font-weight: 650; letter-spacing: -0.2px; }
+  .topbar-divider { width: 1px; height: 22px; background: var(--line-mid); }
+  .console-label { font-size: 13px; font-weight: 600; color: var(--chip-text); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  .onair-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 12px; border-radius: 999px; background: var(--red-tint);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.6px; color: var(--red-text);
+    white-space: nowrap;
   }
-  #micBtn.live { background: #8c2c2c; }
-  #micBtn:disabled { background: #333; color: #777; cursor: default; }
-  #inputRow { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #999; }
-  #inputSel {
-    font-size: 14px; background: #1b1b1b; color: #eee;
-    border: 1px solid #333; border-radius: 8px; padding: 4px 10px; cursor: pointer;
+  .onair-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--red);
+    animation: livePulse 1.6s ease-in-out infinite;
   }
-  #inputSel:disabled { color: #777; cursor: default; }
-  #meter { width: 260px; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
-  #meterFill { height: 100%; width: 0; background: #3c3; transition: width 80ms linear; }
-  #info { font-size: 13px; color: #999; min-height: 1.2em; }
-  #info.error { color: #e66; }
-  #monitor { flex: 1; overflow-y: auto; padding: 14px 18px; }
-  #monitor h2 { font-size: 12px; font-weight: 500; color: #666; margin-bottom: 10px; }
-  .line { max-width: 720px; margin: 0 auto 10px; }
-  .line .en { font-size: 13px; color: #8a8a8a; }
-  .line .tr { font-size: 15px; }
-  .line .tr .tag { color: #666; font-size: 11px; margin-right: 6px; }
+  .onair-badge.off { background: #f4f5fa; color: var(--muted); }
+  .onair-badge.off .dot { background: var(--muted-2); animation: none; }
+
+  .btn-primary {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 11px; border: none;
+    background: var(--ink); color: #fff; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  }
+  .btn-primary:disabled { opacity: 0.55; cursor: default; }
+  .btn-danger {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 11px;
+    background: var(--card); border: 1px solid var(--red-border);
+    color: var(--red-text); font-size: 13px; font-weight: 600;
+  }
+  .btn-danger .stop-glyph {
+    width: 9px; height: 9px; border-radius: 2px; background: var(--red-text);
+  }
+  [hidden] { display: none !important; }
+
+  /* ── End-broadcast confirmation dialog ───────────── */
+  #endDialog {
+    border: none; border-radius: 16px; padding: 24px;
+    width: min(360px, 90vw); background: var(--card); color: var(--ink);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+  }
+  #endDialog::backdrop {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  #endDialog h2 { font-size: 17px; font-weight: 680; letter-spacing: -0.2px; }
+  #endDialog p { margin: 8px 0 20px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .btn-ghost {
+    padding: 9px 16px; border-radius: 11px;
+    background: var(--card); border: 1px solid var(--line-mid);
+    color: var(--chip-text); font-size: 13px; font-weight: 600;
+  }
+  .btn-danger-solid {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 11px; border: none;
+    background: var(--red-text); color: #fff; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+  }
+  .btn-danger-solid .stop-glyph {
+    width: 9px; height: 9px; border-radius: 2px; background: #fff;
+  }
+
+  /* ── Body grid ───────────────────────────────────── */
+  .console-body {
+    flex: 1; display: grid; grid-template-columns: 1fr 356px; overflow: hidden;
+  }
+
+  /* ── Left work area ──────────────────────────────── */
+  .work {
+    display: flex; flex-direction: column; padding: 24px; gap: 18px; overflow: hidden;
+  }
+  .meta-row {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  }
+  .meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .meta h1 { font-size: 22px; font-weight: 680; letter-spacing: -0.4px; }
+  .meta-line {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+  }
+  /* Session fields read as fields: dashed capsule + pencil, solid on focus */
+  .editable {
+    display: inline-block;
+    padding: 1px 8px; border-radius: 8px;
+    border: 1px dashed var(--line-dash); background: var(--card);
+    cursor: text; white-space: nowrap;
+  }
+  .editable:hover { border-color: var(--accent-lighter); background: var(--accent-soft); }
+  .editable:focus {
+    outline: none; border: 1px solid var(--accent); background: #fff;
+  }
+  .meta h1.editable { padding: 2px 10px; margin-left: -10px; }
+  .edit-hint {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; color: var(--muted-2);
+  }
+
+  .chips { display: flex; align-items: stretch; gap: 10px; flex-shrink: 0; }
+  .chip {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 13px; border-radius: 11px;
+    background: var(--card); border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .chip-labels { display: flex; flex-direction: column; gap: 1px; }
+  .chip-select {
+    font-size: 12px; font-weight: 650; color: var(--ink);
+    border: none; padding: 0 14px 0 0; margin: 0;
+    max-width: 150px; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") right center / 10px no-repeat;
+  }
+  .chip-select:disabled { cursor: default; color: var(--chip-text); opacity: 1; }
+  .chip-sub { font-size: 10.5px; font-weight: 600; color: var(--muted-2); }
+  .mic-meter { display: flex; align-items: flex-end; gap: 2.5px; height: 18px; }
+  .mic-meter i {
+    width: 3px; border-radius: 2px; transform-origin: bottom;
+    background: var(--accent-light);
+    transform: scaleY(0.3);
+    transition: transform 90ms linear;
+  }
+  .mic-meter i:nth-child(even) { background: var(--accent-lighter); }
+  .mic-meter i:nth-child(1) { height: 45%; }
+  .mic-meter i:nth-child(2) { height: 72%; }
+  .mic-meter i:nth-child(3) { height: 100%; }
+  .mic-meter i:nth-child(4) { height: 58%; }
+  #micStatus.good { color: var(--green-text); }
+  #micStatus.low { color: #d97706; }
+  .chip-globe {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 8px;
+    background: var(--accent-soft); color: var(--accent); flex-shrink: 0;
+  }
+
+  #info {
+    padding: 10px 14px; border-radius: 11px; font-size: 13px; font-weight: 500;
+    background: var(--red-tint); border: 1px solid var(--red-border); color: var(--red-text);
+  }
+
+  /* ── Live transcript card (read-only monitor) ────── */
+  .transcript-card {
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .tc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--line-soft);
+  }
+  .tc-title { display: flex; align-items: center; gap: 10px; }
+  .overline {
+    font-size: 12px; font-weight: 700; color: var(--muted-2); letter-spacing: 0.6px;
+  }
+  .src-pill {
+    padding: 2px 8px; border-radius: 999px; background: var(--accent-soft);
+    font-size: 11px; font-weight: 700; color: var(--accent);
+  }
+  .tc-room { font-size: 12px; color: var(--muted-2); }
+  .tc-body { flex: 1; position: relative; overflow: hidden; }
+  .tc-mask {
+    position: absolute; top: 0; left: 0; right: 0; height: 22px; z-index: 2;
+    background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+  #monitor {
+    height: 100%; overflow-y: auto; padding: 18px;
+    display: flex; flex-direction: column; gap: 16px; justify-content: flex-start;
+  }
+  #monitor::after { content: ""; flex: 1; } /* keep short feeds top-aligned */
+  .line-src {
+    font-family: var(--font-transcript);
+    font-size: 18px; line-height: 1.5; font-weight: 400; color: var(--fade-old);
+  }
+  .line:nth-last-child(2) .line-src { font-size: 19px; color: var(--fade-mid); }
+  .line:last-child .line-src { font-size: 24px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+  .line:last-child .line-src::after {
+    content: ""; display: inline-block; width: 2px; height: 23px;
+    background: var(--accent); margin-left: 3px; vertical-align: -4px;
+    animation: caret 1s step-end infinite;
+  }
+  /* Translations viewers are receiving, under their source line */
+  .tr {
+    display: flex; align-items: baseline; gap: 7px;
+    margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--muted);
+  }
+  .tr .tag {
+    flex-shrink: 0; min-width: 20px; text-align: center;
+    padding: 1px 5px; border-radius: 6px; background: var(--accent-soft);
+    font-size: 10px; font-weight: 700; color: var(--accent);
+  }
+
+  /* ── Right rail ──────────────────────────────────── */
+  .rail {
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--card); border-left: 1px solid var(--line);
+  }
+  .rail-summary { padding: 20px 22px; border-bottom: 1px solid var(--line-soft); }
+  .count-row { display: flex; align-items: baseline; gap: 8px; }
+  #totalCount { font-size: 34px; font-weight: 720; letter-spacing: -1px; }
+  .count-row span:last-child { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .trend {
+    display: flex; align-items: center; gap: 5px; margin-top: 6px;
+    font-size: 12px; font-weight: 600; color: var(--green-text);
+  }
+  .trend.flat { color: var(--muted-2); }
+  .trend.flat svg { display: none; }
+
+  .rail-langs { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .rail-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px 10px;
+  }
+  #langCount { font-size: 12px; font-weight: 700; color: var(--accent); }
+  #langList {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 0 16px 4px; overflow-y: auto;
+  }
+  .lang-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    background: var(--card-subtle); border: 1px solid var(--line-row);
+  }
+  .lang-avatar {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 9px; background: var(--accent-soft);
+    font-size: 14px; font-weight: 700; color: var(--accent);
+  }
+  .lang-names { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .lang-native { font-size: 13.5px; font-weight: 650; }
+  .lang-sub { font-size: 11.5px; font-weight: 500; color: var(--muted-2); }
+  .lang-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .lang-listeners { font-size: 13px; font-weight: 700; }
+  .lang-live {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; color: var(--green-text);
+  }
+  .lang-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--green-dot); }
+  .lang-live.idle { color: var(--muted-2); }
+  .lang-live.idle i { background: var(--muted-2); }
+  .rail-empty { padding: 8px 6px; font-size: 12.5px; color: var(--muted-2); }
+
+  .rail-foot { padding: 14px 16px 18px; }
+  #addLangBtn {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; padding: 12px; border: 1px dashed var(--line-dash);
+    border-radius: 12px; background: var(--card);
+    font-size: 13px; font-weight: 650; color: var(--chip-text);
+  }
+  #addLangNote {
+    margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--muted);
+  }
+  #addLangNote code {
+    font-size: 11px; background: var(--card-subtle); border: 1px solid var(--line-row);
+    border-radius: 6px; padding: 1px 5px; user-select: all;
+  }
+
+  @keyframes livePulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.45; }
+  }
+  @keyframes caret {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @media (max-width: 900px) {
+    .console-body { grid-template-columns: 1fr; overflow-y: auto; display: flex; flex-direction: column; }
+    .work { overflow: visible; }
+    .transcript-card { min-height: 320px; }
+    .rail { border-left: none; border-top: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .onair-badge .dot, .line:last-child .line-src::after { animation: none; }
+    .mic-meter i { transition: none; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Sermon Translator — Host</h1>
-  <div id="status"><span id="dot"></span><span id="statusText">idle</span></div>
-</header>
-<div id="panel">
-  <div id="inputRow">
-    <label for="inputSel">Speaker language 설교 언어</label>
-    <select id="inputSel">
-      <option value="en">English</option>
-      <option value="fr">Français · French</option>
-      <option value="ko">한국어 · Korean</option>
-    </select>
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <path d="M1.5 6v3"/><path d="M4.5 4v7"/><path d="M7.5 1.5v12"/><path d="M10.5 4v7"/><path d="M13.5 6v3"/>
+        </svg>
+      </span>
+      <span class="wordmark">Worship On Air</span>
+    </div>
+    <span class="topbar-divider"></span>
+    <span class="console-label">Host Console</span>
   </div>
-  <button id="micBtn">🎙️ 방송 시작 (Start broadcasting)</button>
-  <div id="meter"><div id="meterFill"></div></div>
-  <div id="info"></div>
+  <div class="topbar-right">
+    <span id="badge" class="onair-badge off"><i class="dot"></i><span id="badgeText">OFF AIR</span></span>
+    <button id="micBtn" class="btn-primary">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/>
+      </svg>
+      Start broadcasting
+    </button>
+    <button id="endBtn" class="btn-danger" hidden>
+      <span class="stop-glyph" aria-hidden="true"></span>
+      End broadcast
+    </button>
+  </div>
+</header>
+
+<div class="console-body">
+  <main class="work">
+    <div class="meta-row">
+      <div class="meta">
+        <h1 id="titleEl" class="editable" contenteditable="true" spellcheck="false">The Fullness of Grace</h1>
+        <p class="meta-line">
+          <span id="speakerEl" class="editable" contenteditable="true" spellcheck="false">Pastor Daniel Okafor</span>
+          · <span id="verseEl" class="editable" contenteditable="true" spellcheck="false">John 1</span>
+          · <span id="serviceEl" class="editable" contenteditable="true" spellcheck="false">Sunday Service</span>
+          <span class="edit-hint">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+            click to edit
+          </span>
+        </p>
+      </div>
+      <div class="chips">
+        <div class="chip">
+          <span class="mic-meter" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="chip-labels">
+            <select id="micSel" class="chip-select" title="Input microphone"></select>
+            <span id="micStatus" class="chip-sub">Mic off</span>
+          </span>
+        </div>
+        <div class="chip">
+          <span class="chip-globe" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a13.5 13.5 0 0 1 0 18a13.5 13.5 0 0 1 0-18Z"/>
+            </svg>
+          </span>
+          <span class="chip-labels">
+            <select id="inputSel" class="chip-select" title="Speaker language">
+              <option value="en">English</option>
+              <option value="fr">Français · French</option>
+              <option value="ko">한국어 · Korean</option>
+            </select>
+            <span class="chip-sub">Speaker language</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div id="info" hidden></div>
+
+    <section class="transcript-card">
+      <div class="tc-header">
+        <div class="tc-title">
+          <span class="overline">LIVE TRANSCRIPT</span>
+          <span id="srcPill" class="src-pill">English (source)</span>
+        </div>
+        <span class="tc-room"></span>
+      </div>
+      <div class="tc-body">
+        <div class="tc-mask"></div>
+        <div id="monitor"></div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="rail">
+    <div class="rail-summary">
+      <div class="count-row"><span id="totalCount">0</span><span>listeners connected</span></div>
+      <div id="trend" class="trend flat">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 17 17 7"/><path d="M9 7h8v8"/>
+        </svg>
+        <span id="trendText">no change in the last 5 min</span>
+      </div>
+    </div>
+    <div class="rail-langs">
+      <div class="rail-head">
+        <span class="overline">BROADCASTING IN</span>
+        <span id="langCount">0 languages</span>
+      </div>
+      <div id="langList">
+        <div class="rail-empty">Languages appear here as listeners pick them.</div>
+      </div>
+      <div class="rail-foot">
+        <button id="addLangBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14"/><path d="M5 12h14"/>
+          </svg>
+          Add a language
+        </button>
+        <p id="addLangNote" hidden></p>
+      </div>
+    </div>
+  </aside>
 </div>
-<div id="monitor"><h2>파이프라인 모니터 (what viewers see — a language appears once a viewer selects it)</h2></div>
+
+<dialog id="endDialog">
+  <h2>End the broadcast?</h2>
+  <p>Translation stops for everyone and listeners are disconnected. You can start a new broadcast at any time.</p>
+  <div class="dialog-actions">
+    <button id="endCancelBtn" class="btn-ghost">Keep broadcasting</button>
+    <button id="endConfirmBtn" class="btn-danger-solid">
+      <span class="stop-glyph" aria-hidden="true"></span>
+      End broadcast
+    </button>
+  </div>
+</dialog>
 
 <script>
 const params = new URLSearchParams(location.search);
 const room = params.get("room") || "main";
 const micBtn = document.getElementById("micBtn");
+const endBtn = document.getElementById("endBtn");
+const endDialog = document.getElementById("endDialog");
+const micSel = document.getElementById("micSel");
 const inputSel = document.getElementById("inputSel");
+const badge = document.getElementById("badge");
+const badgeText = document.getElementById("badgeText");
+const srcPill = document.getElementById("srcPill");
+const info = document.getElementById("info");
+const micStatus = document.getElementById("micStatus");
+const meterBars = document.querySelectorAll(".mic-meter i");
+const monitor = document.getElementById("monitor");
+const totalCount = document.getElementById("totalCount");
+const trend = document.getElementById("trend");
+const trendText = document.getElementById("trendText");
+const langCount = document.getElementById("langCount");
+const langList = document.getElementById("langList");
+const addLangBtn = document.getElementById("addLangBtn");
+const addLangNote = document.getElementById("addLangNote");
+const wsBase = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
+
+document.querySelector(".tc-room").textContent = `Room · ${room}`;
+
+// ---- speaker (source) language ----
+
+const SOURCE_NAMES = { en: "English", fr: "Français", ko: "한국어" };
 if ([...inputSel.options].some((o) => o.value === params.get("input"))) {
   inputSel.value = params.get("input");
+}
+function syncSourceUi() {
+  srcPill.textContent = `${SOURCE_NAMES[inputSel.value]} (source)`;
 }
 inputSel.onchange = () => {
   params.set("input", inputSel.value);
   history.replaceState(null, "", `?${params.toString()}`);
+  syncSourceUi();
 };
-const dot = document.getElementById("dot");
-const statusText = document.getElementById("statusText");
-const info = document.getElementById("info");
-const meterFill = document.getElementById("meterFill");
-const monitor = document.getElementById("monitor");
-const wsBase = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
+syncSourceUi();
+
+// ---- input microphone picker ----
+
+const MIC_KEY = "woaf-host-mic";
+
+async function refreshMics() {
+  let devices = [];
+  try {
+    devices = await navigator.mediaDevices.enumerateDevices();
+  } catch { /* enumeration unsupported — keep the default option */ }
+  const mics = devices.filter((d) => d.kind === "audioinput");
+  const wanted = micSel.value || localStorage.getItem(MIC_KEY) || "";
+  micSel.replaceChildren();
+  const def = new Option("Default microphone", "");
+  micSel.add(def);
+  mics.forEach((mic, i) => {
+    if (!mic.deviceId || mic.deviceId === "default") return;
+    micSel.add(new Option(mic.label || `Microphone ${i + 1}`, mic.deviceId));
+  });
+  if ([...micSel.options].some((o) => o.value === wanted)) micSel.value = wanted;
+}
+micSel.onchange = () => localStorage.setItem(MIC_KEY, micSel.value);
+navigator.mediaDevices?.addEventListener?.("devicechange", refreshMics);
+refreshMics();
+
+// ---- editable session meta (title / speaker / verse / service), per room ----
+
+const META_KEY = `woaf-host-meta:${room}`;
+const metaFields = {
+  title: document.getElementById("titleEl"),
+  speaker: document.getElementById("speakerEl"),
+  verse: document.getElementById("verseEl"),
+  service: document.getElementById("serviceEl"),
+};
+try {
+  const saved = JSON.parse(localStorage.getItem(META_KEY) || "{}");
+  for (const [key, el] of Object.entries(metaFields)) {
+    if (saved[key]) el.textContent = saved[key];
+  }
+} catch { /* corrupted storage — keep defaults */ }
+for (const el of Object.values(metaFields)) {
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } });
+  el.addEventListener("blur", () => {
+    const data = {};
+    for (const [key, field] of Object.entries(metaFields)) data[key] = field.textContent.trim();
+    localStorage.setItem(META_KEY, JSON.stringify(data));
+  });
+}
 
 // ---- capture: mic → AudioWorklet (downsample to 16 kHz) → 100 ms Int16 chunks ----
 
@@ -139,25 +615,74 @@ const workletUrl = URL.createObjectURL(
 
 let ctx = null, stream = null, ws = null;
 let live = false;         // user wants to broadcast (drives reconnects)
+let connected = false;    // host socket currently open
 let startedAt = 0, timer = null;
 
-function setInfo(text, isError = false) {
-  info.textContent = text;
-  info.classList.toggle("error", isError);
+function setInfo(text) {
+  info.textContent = text || "";
+  info.hidden = !text;
 }
 
-function setStatus(connected, text) {
-  dot.classList.toggle("on", connected);
-  statusText.textContent = text;
+// ---- ON AIR badge + timer ----
+
+function elapsedLabel() {
+  const s = Math.floor((Date.now() - startedAt) / 1000);
+  const hh = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return hh > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function renderBadge() {
+  if (!live) {
+    badge.classList.add("off");
+    badgeText.textContent = "OFF AIR";
+  } else if (connected) {
+    badge.classList.remove("off");
+    badgeText.textContent = `ON AIR · ${elapsedLabel()}`;
+  } else {
+    badge.classList.add("off");
+    badgeText.textContent = `RECONNECTING · ${elapsedLabel()}`;
+  }
+}
+
+// ---- mic meter chip (driven by the real capture level) ----
+
+const BAR_GAIN = [1.5, 2.4, 3.4, 1.9]; // per-bar sensitivity, for an equalizer feel
+let levelHold = 0;
+
+function renderMeter(peak) {
+  levelHold = Math.max(peak, levelHold * 0.82); // fast attack, slow release
+  meterBars.forEach((bar, i) => {
+    const y = live ? Math.max(0.15, Math.min(1, levelHold * BAR_GAIN[i])) : 0.3;
+    bar.style.transform = `scaleY(${y})`;
+  });
+  const code = inputSel.value.toUpperCase();
+  if (!live) {
+    micStatus.textContent = "Mic off";
+    micStatus.className = "chip-sub";
+  } else if (levelHold > 0.18) {
+    micStatus.textContent = `Strong signal · ${code}`;
+    micStatus.className = "chip-sub good";
+  } else if (levelHold > 0.04) {
+    micStatus.textContent = `Good signal · ${code}`;
+    micStatus.className = "chip-sub good";
+  } else {
+    micStatus.textContent = `Low signal · ${code}`;
+    micStatus.className = "chip-sub low";
+  }
 }
 
 async function startCapture() {
-  stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+  const audio = { channelCount: 1 };
+  if (micSel.value) audio.deviceId = { exact: micSel.value };
+  stream = await navigator.mediaDevices.getUserMedia({ audio });
+  refreshMics(); // permission granted — device labels are readable now
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   await ctx.audioWorklet.addModule(workletUrl);
   const node = new AudioWorkletNode(ctx, "pcm16k-capture");
   node.port.onmessage = ({ data }) => {
-    meterFill.style.width = `${Math.min(100, data.peak * 140)}%`;
+    renderMeter(data.peak);
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(data.buf);
   };
   ctx.createMediaStreamSource(stream).connect(node);
@@ -170,18 +695,20 @@ async function startCapture() {
 function connectHostSocket() {
   ws = new WebSocket(`${wsBase}/ws/host?room=${room}&input_lang=${inputSel.value}`);
   ws.onopen = () => {
-    setStatus(true, `room: ${room} — 송출 중`);
+    connected = true;
+    renderBadge();
     setInfo("");
   };
   ws.onclose = (event) => {
     ws = null;
+    connected = false;
     if (!live) return;
     if (event.code === 4409) {
-      setInfo("이 방에는 이미 호스트가 있습니다 (room already has a host)", true);
+      setInfo("This room already has a host broadcasting.");
       stop();
       return;
     }
-    setStatus(false, "reconnecting…");
+    renderBadge();
     setTimeout(() => { if (live) connectHostSocket(); }, 2000);
   };
 }
@@ -191,90 +718,200 @@ async function start() {
   try {
     await startCapture();
   } catch (error) {
-    setInfo(`마이크를 열 수 없습니다: ${error.message}`, true);
+    setInfo(`Could not open the microphone: ${error.message}`);
     micBtn.disabled = false;
     return;
   }
   live = true;
   inputSel.disabled = true;  // language is fixed for the Deepgram session
+  micSel.disabled = true;    // device is fixed for the capture session
   connectHostSocket();
   startedAt = Date.now();
-  timer = setInterval(() => {
-    const s = Math.floor((Date.now() - startedAt) / 1000);
-    const mm = String(Math.floor(s / 60)).padStart(2, "0");
-    const ss = String(s % 60).padStart(2, "0");
-    micBtn.textContent = `⏹ 방송 중지 (Stop) ${mm}:${ss}`;
-  }, 1000);
-  micBtn.textContent = "⏹ 방송 중지 (Stop)";
-  micBtn.classList.add("live");
+  timer = setInterval(renderBadge, 1000);
+  renderBadge();
+  micBtn.hidden = true;
   micBtn.disabled = false;
+  endBtn.hidden = false;
 }
 
 function stop() {
   live = false;
+  connected = false;
   clearInterval(timer);
   if (ws) { ws.close(1000); ws = null; }
   if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
   if (ctx) { ctx.close(); ctx = null; }
-  meterFill.style.width = "0";
-  setStatus(false, "idle");
+  renderMeter(0);
+  renderBadge();
   inputSel.disabled = false;
-  micBtn.textContent = "🎙️ 방송 시작 (Start broadcasting)";
-  micBtn.classList.remove("live");
-  micBtn.disabled = false;
+  micSel.disabled = false;
+  micBtn.hidden = false;
+  endBtn.hidden = true;
+  if (endDialog.open) endDialog.close();
 }
 
-micBtn.onclick = () => (live ? stop() : start());
+micBtn.onclick = start;
 
-// ---- monitor: a receive-only client socket, so the operator can confirm
-// ---- the pipeline is producing transcripts/translations (no audio here) ----
+// End asks for confirmation in a modal before stopping.
+endBtn.onclick = () => endDialog.showModal();
+document.getElementById("endCancelBtn").onclick = () => endDialog.close();
+document.getElementById("endConfirmBtn").onclick = () => {
+  endDialog.close();
+  stop();
+};
+
+// ---- monitor: a receive-only client socket (lang=all), so the operator can
+// ---- confirm the pipeline is producing transcripts/translations, and
+// ---- receive listener telemetry for the rail (no audio here) ----
+
+const LANG_META = {
+  en: { code: "EN", native: "English", en: "English" },
+  ko: { code: "한", native: "한국어", en: "Korean" },
+  zh: { code: "中", native: "中文", en: "Mandarin" },
+  yue: { code: "粵", native: "廣東話", en: "Cantonese" },
+  pa: { code: "ਪੰ", native: "ਪੰਜਾਬੀ", en: "Punjabi" },
+  es: { code: "ES", native: "Español", en: "Spanish" },
+  fr: { code: "FR", native: "Français", en: "French" },
+  fa: { code: "FA", native: "فارسی", en: "Farsi" },
+};
+
+// ---- transcript feed: source line + the translations viewers receive ----
 
 const lines = new Map(); // sentence id -> line element
 
-const LANG_TAGS = {
-  en: "EN", ko: "한", zh: "普", yue: "粵", fa: "FA", pa: "ਪੰ", es: "ES", fr: "FR",
-};
-
-function monitorLine(id, en) {
+function monitorLine(id, sourceText) {
   const div = document.createElement("div");
   div.className = "line";
-  div.innerHTML = `<div class="en"></div>`;
-  div.querySelector(".en").textContent = en;
+  const src = document.createElement("div");
+  src.className = "line-src";
+  src.textContent = sourceText;
+  src.dir = "auto";
+  div.appendChild(src);
   monitor.appendChild(div);
-  while (monitor.children.length > 60) monitor.children[1].remove(); // keep <h2>
+  while (monitor.children.length > 60) monitor.firstChild.remove();
   lines.set(id, div);
   if (lines.size > 60) lines.delete(lines.keys().next().value);
   monitor.scrollTop = monitor.scrollHeight;
   return div;
 }
 
+function addTranslation(m) {
+  const line = lines.get(m.id) || monitorLine(m.id, m.source);
+  const langCode = m.lang || "ko";
+  if (langCode === inputSel.value) return; // passthrough duplicates the source line
+  let el = line.querySelector(`.tr[data-lang="${langCode}"]`);
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "tr";
+    el.dataset.lang = langCode;
+    el.innerHTML = `<span class="tag"></span><span class="text"></span>`;
+    el.querySelector(".tag").textContent = (LANG_META[langCode] || { code: langCode }).code;
+    el.querySelector(".text").dir = "auto"; // Farsi is right-to-left
+    line.appendChild(el);
+  }
+  el.querySelector(".text").textContent =
+    m.reference ? `${m.text} 〔${m.reference}〕` : m.text;
+  monitor.scrollTop = monitor.scrollHeight;
+}
+
+// ---- right rail: listener stats per language ----
+
+const langState = new Map(); // code -> { listeners, lastAt }
+const samples = [];          // [t, total] history for the 5-minute trend
+let total = 0;
+
+function langEntry(code) {
+  if (!langState.has(code)) langState.set(code, { listeners: 0, lastAt: 0 });
+  return langState.get(code);
+}
+
+function renderRail() {
+  const now = Date.now();
+  const rows = [...langState.entries()]
+    .filter(([, s]) => s.listeners > 0 || now - s.lastAt < 60000)
+    .sort((a, b) => b[1].listeners - a[1].listeners);
+
+  langCount.textContent = `${rows.length} language${rows.length === 1 ? "" : "s"}`;
+  langList.replaceChildren();
+  if (rows.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "rail-empty";
+    empty.textContent = "Languages appear here as listeners pick them.";
+    langList.appendChild(empty);
+    return;
+  }
+  for (const [code, state] of rows) {
+    const meta = LANG_META[code] || { code: code.toUpperCase(), native: code, en: code };
+    const row = document.createElement("div");
+    row.className = "lang-row";
+    row.innerHTML = `
+      <span class="lang-avatar"></span>
+      <span class="lang-names"><span class="lang-native"></span><span class="lang-sub"></span></span>
+      <span class="lang-right"><span class="lang-listeners"></span>
+        <span class="lang-live"><i></i><span></span></span></span>`;
+    row.querySelector(".lang-avatar").textContent = meta.code;
+    row.querySelector(".lang-native").textContent = meta.native;
+    row.querySelector(".lang-sub").textContent = meta.en;
+    row.querySelector(".lang-listeners").textContent = state.listeners;
+    const liveTag = row.querySelector(".lang-live");
+    const isLive = state.listeners > 0;
+    liveTag.classList.toggle("idle", !isLive);
+    liveTag.querySelector("span").textContent = isLive ? "LIVE" : "IDLE";
+    langList.appendChild(row);
+  }
+}
+
+function renderSummary() {
+  totalCount.textContent = total;
+  const now = Date.now();
+  samples.push([now, total]);
+  while (samples.length > 2 && samples[0][0] < now - 360000) samples.shift();
+  const baseline = samples.find(([t]) => t >= now - 300000) || samples[0];
+  const delta = total - baseline[1];
+  if (delta > 0) {
+    trend.classList.remove("flat");
+    trendText.textContent = `+${delta} in the last 5 min`;
+  } else {
+    trend.classList.add("flat");
+    trendText.textContent = `${delta < 0 ? delta : "no change"} in the last 5 min`;
+  }
+}
+
 function connectMonitor() {
-  // lang=all: the operator sees every language's translations
+  // lang=all: the operator sees every language's activity
   const monitorWs = new WebSocket(`${wsBase}/ws/client?room=${room}&lang=all`);
   monitorWs.onmessage = (event) => {
     const m = JSON.parse(event.data);
-    if (m.type === "transcript") monitorLine(m.id, m.text);
-    else if (m.type === "translation") {
-      const line = lines.get(m.id) || monitorLine(m.id, m.source);
-      const langCode = m.lang || "ko";
-      let el = line.querySelector(`.tr[data-lang="${langCode}"]`);
-      if (!el) {
-        el = document.createElement("div");
-        el.className = "tr";
-        el.dataset.lang = langCode;
-        el.innerHTML = `<span class="tag"></span><span class="text"></span>`;
-        el.querySelector(".tag").textContent = LANG_TAGS[langCode] || langCode;
-        el.querySelector(".text").dir = "auto";  // Farsi is right-to-left
-        line.appendChild(el);
-      }
-      el.querySelector(".text").textContent =
-        m.reference ? `${m.text} 〔${m.reference}〕` : m.text;
-      monitor.scrollTop = monitor.scrollHeight;
+    if (m.type === "transcript") {
+      monitorLine(m.id, m.text);
+    } else if (m.type === "translation") {
+      addTranslation(m);
+      const state = langEntry(m.lang || "ko");
+      state.lastAt = Date.now();
+      renderRail();
+    } else if (m.type === "stats") {
+      total = m.total;
+      for (const state of langState.values()) state.listeners = 0;
+      for (const [code, count] of Object.entries(m.langs)) langEntry(code).listeners = count;
+      renderSummary();
+      renderRail();
     }
   };
   monitorWs.onclose = () => setTimeout(connectMonitor, 2000);
 }
 connectMonitor();
+
+// ---- "Add a language": languages start when a listener selects them ----
+
+addLangBtn.onclick = () => {
+  if (!addLangNote.hidden) { addLangNote.hidden = true; return; }
+  const link = `${location.origin}/?room=${room}`;
+  addLangNote.replaceChildren(
+    "A language starts broadcasting the moment a listener picks it — no setup needed here. Share the listener link: ",
+    Object.assign(document.createElement("code"), { textContent: link }),
+  );
+  addLangNote.hidden = false;
+};
 </script>
 </body>
 </html>

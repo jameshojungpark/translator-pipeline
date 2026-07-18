@@ -36,6 +36,21 @@ class Room:
         """
         return {lang for lang in self._clients.values() if lang != "all"}
 
+    def lang_counts(self) -> dict[str, int]:
+        """Listener count per selected language ("all" monitors don't count)."""
+        counts: dict[str, int] = {}
+        for lang in self._clients.values():
+            if lang != "all":
+                counts[lang] = counts.get(lang, 0) + 1
+        return counts
+
+    async def broadcast_stats(self) -> None:
+        """Push listener telemetry to everyone; the host console renders it."""
+        counts = self.lang_counts()
+        await self.broadcast(
+            {"type": "stats", "total": sum(counts.values()), "langs": counts}
+        )
+
     async def broadcast(self, message: dict[str, Any], lang: str | None = None) -> None:
         """Send a JSON message to connected clients, dropping dead ones.
 
