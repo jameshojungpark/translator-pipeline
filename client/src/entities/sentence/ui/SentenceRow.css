@@ -1,37 +1,133 @@
+/* Reading feed: serif captions that fade as they age. Base style is the
+   oldest tier; the two newest settled lines step up in size and darkness,
+   and the active line carries the indigo rule + caret. */
 .sentence {
-  max-width: 720px;
-  margin: 0 auto 18px;
-  border-radius: 10px;
-  padding: 6px 10px;
+  margin: 0 0 20px;
+  font-family: var(--font-caption);
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--fade-old);
+  animation: sentence-in 280ms ease-out;
+  transition: color 300ms ease, font-size 300ms ease;
 }
-.sentence.speaking {
-  background: #20281f;
-  outline: 1px solid #3a4a38;
+.sentence:nth-last-child(3) {
+  font-size: 20px;
+  color: var(--fade-mid);
 }
-.sentence-source {
-  font-size: 14px;
-  color: #8a8a8a;
-  margin-bottom: 4px;
+.sentence:nth-last-child(2),
+.sentence:last-child {
+  font-size: 21px;
+  color: var(--fade-recent);
+}
+.sentence.active {
+  font-size: 27px;
+  line-height: 1.42;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+  border-left: 3px solid var(--accent);
+  padding-left: 15px;
+  margin-left: -3px;
+}
+/* Reading back (auto-scroll paused): lift the fade so history is legible.
+   Sizes keep their ramp; only color normalizes. */
+.sentence.reading {
+  color: var(--ink);
+}
+@keyframes sentence-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 .sentence-target-row {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
 }
 .sentence-target {
-  font-size: 21px;
-  line-height: 1.5;
   flex: 1;
 }
-.sentence-target.pending {
-  color: #555;
-  font-size: 14px;
+.sentence-caret {
+  display: inline-block;
+  width: 2px;
+  height: 26px;
+  background: var(--accent);
+  vertical-align: -4px;
+  margin-left: 3px;
+  animation: caret-blink 1s step-end infinite;
 }
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+/* Original-language echo under each line. Settled lines inherit their
+   caption's fade color so the echo ages with the line. */
+.sentence-source {
+  margin-top: 9px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 400;
+  font-style: italic;
+  color: inherit;
+  letter-spacing: 0;
+}
+.sentence.active .sentence-source,
+.sentence.reading .sentence-source {
+  color: var(--muted-2);
+}
+/* Scripture citation chip */
 .sentence-ref {
+  font-family: var(--font-ui);
+  font-style: normal;
   font-size: 12px;
-  color: #a8c3a0;
-  white-space: nowrap;
-  border: 1px solid #3a4a38;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.sentence-pending-dots i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  margin-right: 6px;
+  animation: pending-pulse 1.4s ease-in-out infinite;
+}
+.sentence-pending-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.sentence-pending-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes pending-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentence {
+    animation: none;
+    transition: none;
+  }
+  .sentence-caret,
+  .sentence-pending-dots i {
+    animation: none;
+  }
 }

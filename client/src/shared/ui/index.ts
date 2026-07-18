@@ -1,1 +1,2 @@
-export { StatusDot } from "./StatusDot";
+export { LiveBadge } from "./LiveBadge";
+export { Waveform } from "./Waveform";

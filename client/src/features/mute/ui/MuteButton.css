@@ -1,9 +1,25 @@
 .mute-btn {
-  font-size: 18px;
-  background: none;
-  border: 1px solid #333;
-  border-radius: 8px;
-  color: #eee;
-  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 150ms ease;
+}
+.mute-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.mute-btn[aria-pressed="true"] {
+  color: var(--muted-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mute-btn {
+    transition: none;
+  }
 }

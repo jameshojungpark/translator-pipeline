@@ -7,7 +7,7 @@ import { MuteButton, useMute } from "@/features/mute";
 import { openRoomSocket } from "@/shared/api";
 import { LANGS, type LangCode } from "@/shared/config";
 import { PlaybackQueue } from "@/shared/lib/audio";
-import { StatusDot } from "@/shared/ui";
+import { LiveBadge, Waveform } from "@/shared/ui";
 
 import "./ViewerPage.css";
 
@@ -15,7 +15,7 @@ export function ViewerPage() {
   const room = useMemo(() => new URLSearchParams(location.search).get("room") ?? "main", []);
   const [lang, setLang] = useLangParam();
   const [connected, setConnected] = useState(false);
-  const [statusText, setStatusText] = useState("connecting…");
+  const [statusText, setStatusText] = useState("Connecting…");
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [sentences, dispatch] = useReducer(feedReducer, []);
   const [queue] = useState(() => new PlaybackQueue());
@@ -31,7 +31,7 @@ export function ViewerPage() {
     const socket = openRoomSocket(room, lang, {
       onStatus: (isConnected) => {
         setConnected(isConnected);
-        setStatusText(isConnected ? `room: ${room} · ${LANGS[lang].en}` : "reconnecting…");
+        setStatusText(isConnected ? `Live · ${LANGS[lang].en}` : "Reconnecting…");
       },
       onMessage: (m) => {
         if (m.type === "transcript") {
@@ -72,23 +72,67 @@ export function ViewerPage() {
     setLang(code);
   };
 
+  // The emphasized line: the one whose audio is playing right now, or —
+  // between clips / with audio off — simply the newest.
+  let activeIndex = sentences.length - 1;
+  for (let i = sentences.length - 1; i >= 0; i--) {
+    if (sentences[i].speaking) {
+      activeIndex = i;
+      break;
+    }
+  }
+
   return (
     <div className="viewer">
       <header className="viewer-header">
-        <h1>Live Sermon Translation</h1>
-        <div className="viewer-status">
-          <StatusDot on={connected} />
-          <span>{statusText}</span>
+        <div className="viewer-topbar">
+          <div className="viewer-brand">
+            <span className="viewer-logo" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+                <path d="M1.5 5.5v3" />
+                <path d="M4.25 3.5v7" />
+                <path d="M7 1.5v11" />
+                <path d="M9.75 3.5v7" />
+                <path d="M12.5 5.5v3" />
+              </svg>
+            </span>
+            <span className="viewer-wordmark">Worship On Air</span>
+          </div>
+          <LiveBadge on={connected} />
+        </div>
+        <div className="viewer-meta">
+          <h1>Live Sermon</h1>
+          <p>{statusText}</p>
         </div>
         <LangSelect value={lang} onChange={setLang} />
-        <AutoScrollButton enabled={autoScroll.enabled} onToggle={autoScroll.toggle} />
-        {audioEnabled && <MuteButton muted={muted} onToggle={toggleMute} />}
       </header>
-      <div className="viewer-feed" ref={feedRef}>
-        {sentences.map((sentence, index) => (
-          <SentenceRow key={index} sentence={sentence} />
-        ))}
+
+      <div className="viewer-feed-wrap">
+        <div className="viewer-feed-mask" />
+        <div className="viewer-feed" ref={feedRef}>
+          {sentences.map((sentence, index) => (
+            <SentenceRow
+              key={index}
+              sentence={sentence}
+              active={index === activeIndex}
+              reading={!autoScroll.enabled}
+            />
+          ))}
+        </div>
       </div>
+
+      <div className="viewer-bottom">
+        <div className="live-bar">
+          <Waveform active={connected} />
+          <div className="live-bar-status">
+            <strong>{connected ? "Translating live" : "Reconnecting…"}</strong>
+            <span>{autoScroll.enabled ? "Auto-scrolling · tap to pause" : "Paused · tap to resume"}</span>
+          </div>
+          {audioEnabled && <MuteButton muted={muted} onToggle={toggleMute} />}
+          <AutoScrollButton enabled={autoScroll.enabled} onToggle={autoScroll.toggle} />
+        </div>
+      </div>
+
       {!audioEnabled && <LangOverlay onSelect={chooseLangAndEnableAudio} />}
     </div>
   );

@@ -229,7 +229,7 @@ async def health() -> dict[str, str]:
 
 app.mount(
     "/",
-    StaticFiles(directory=Path(__file__).parent.parent / "client", html=True),
+    StaticFiles(directory=Path(__file__).parent.parent / "client" / "dist", html=True),
     name="client",
 )
 

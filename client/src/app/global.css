@@ -1,12 +1,53 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+
+  /* Light, calm reading surface with a single indigo accent.
+     LIVE red is reserved for the on-air badge. */
+  --ink: #0f172a;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --chip-text: #475569;
+
+  --accent: #4f46e5;
+  --accent-2: #7c74f2;
+  --accent-soft: #eef2ff;
+  --accent-light: #818cf8;
+  --accent-lighter: #a5b4fc;
+
+  --live-red: #ef4444;
+  --live-red-text: #dc2626;
+  --live-red-tint: rgba(239, 68, 68, 0.1);
+
+  --card: #ffffff;
+  --chip: #f4f5fa;
+  --bar: #0f172a;
+  --line: #eceef4;
+
+  /* Caption fade ramp, oldest → newest settled line */
+  --fade-old: #cbd2de;
+  --fade-mid: #a9b2c2;
+  --fade-recent: #7b869a;
+
+  --shadow-logo: 0 2px 6px rgba(79, 70, 229, 0.35);
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-bar: 0 8px 24px rgba(15, 23, 42, 0.22);
+
+  --font-ui: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-caption: "Newsreader", Georgia, "Apple SD Gothic Neo", "Noto Sans KR", serif;
 }
 * {
   box-sizing: border-box;
   margin: 0;
 }
 body {
-  font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  background: #111;
-  color: #eee;
+  font-family: var(--font-ui);
+  background: #f6f7fb;
+  color: var(--ink);
+}
+button {
+  font-family: var(--font-ui);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
