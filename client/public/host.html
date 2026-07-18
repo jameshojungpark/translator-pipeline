@@ -191,10 +191,6 @@
   .overline {
     font-size: 12px; font-weight: 700; color: var(--muted-2); letter-spacing: 0.6px;
   }
-  .src-pill {
-    padding: 2px 8px; border-radius: 999px; background: var(--accent-soft);
-    font-size: 11px; font-weight: 700; color: var(--accent);
-  }
   .tc-room { font-size: 12px; color: var(--muted-2); }
   .tc-body { flex: 1; position: relative; overflow: hidden; }
   .tc-mask {
@@ -305,6 +301,7 @@
     </div>
     <span class="topbar-divider"></span>
     <span class="console-label">Host Console</span>
+    <span class="tc-room"></span>
   </div>
   <div class="topbar-right">
     <span id="badge" class="onair-badge off"><i class="dot"></i><span id="badgeText">OFF AIR</span></span>
@@ -329,8 +326,6 @@
       <div class="tc-header">
         <div class="tc-title">
           <span class="overline">LIVE TRANSCRIPT</span>
-          <span id="srcPill" class="src-pill">English (source)</span>
-          <span class="tc-room"></span>
         </div>
         <div class="chips">
           <div class="chip">
@@ -402,7 +397,6 @@ const micSel = document.getElementById("micSel");
 const inputSel = document.getElementById("inputSel");
 const badge = document.getElementById("badge");
 const badgeText = document.getElementById("badgeText");
-const srcPill = document.getElementById("srcPill");
 const info = document.getElementById("info");
 const micStatus = document.getElementById("micStatus");
 const meterBars = document.querySelectorAll(".mic-meter i");
@@ -416,19 +410,13 @@ document.querySelector(".tc-room").textContent = `Room · ${room}`;
 
 // ---- speaker (source) language ----
 
-const SOURCE_NAMES = { en: "English", fr: "Français", ko: "한국어" };
 if ([...inputSel.options].some((o) => o.value === params.get("input"))) {
   inputSel.value = params.get("input");
-}
-function syncSourceUi() {
-  srcPill.textContent = `${SOURCE_NAMES[inputSel.value]} (source)`;
 }
 inputSel.onchange = () => {
   params.set("input", inputSel.value);
   history.replaceState(null, "", `?${params.toString()}`);
-  syncSourceUi();
 };
-syncSourceUi();
 
 // ---- input microphone picker ----
 
