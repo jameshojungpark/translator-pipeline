@@ -101,6 +101,7 @@
 
   /* ── End-broadcast confirmation dialog ───────────── */
   #endDialog {
+    margin: auto; /* the * reset zeroes the UA margin that centers dialogs */
     border: none; border-radius: 16px; padding: 24px;
     width: min(360px, 90vw); background: var(--card); color: var(--ink);
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
@@ -203,6 +204,11 @@
     display: flex; flex-direction: column; gap: 16px; justify-content: flex-start;
   }
   #monitor::after { content: ""; flex: 1; } /* keep short feeds top-aligned */
+  /* Divider between sentence groups (source + its translations) */
+  .line:not(:last-child) {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line-soft);
+  }
   .line-src {
     font-family: var(--font-transcript);
     font-size: 18px; line-height: 1.5; font-weight: 400; color: var(--fade-old);

@@ -42,23 +42,6 @@
   color: var(--ink);
   letter-spacing: -0.2px;
 }
-.viewer-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.viewer-meta h1 {
-  font-size: 20px;
-  font-weight: 680;
-  color: var(--ink);
-  letter-spacing: -0.4px;
-}
-.viewer-meta p {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
 /* ── Caption feed ───────────────────────────────────── */
 .viewer-feed-wrap {
   flex: 1;

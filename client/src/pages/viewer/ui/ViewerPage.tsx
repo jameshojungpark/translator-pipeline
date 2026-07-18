@@ -6,7 +6,7 @@ import { LangOverlay, LangSelect, useLangParam } from "@/features/language-selec
 import { MuteButton, useMute } from "@/features/mute";
 import { TextSizeControl, useTextSize } from "@/features/text-size";
 import { openRoomSocket } from "@/shared/api";
-import { LANGS, type LangCode } from "@/shared/config";
+import { type LangCode } from "@/shared/config";
 import { PlaybackQueue } from "@/shared/lib/audio";
 import { LiveBadge } from "@/shared/ui";
 
@@ -78,11 +78,6 @@ export function ViewerPage() {
   // LIVE means a host is actually broadcasting, not merely that our socket
   // is open — before the service starts the badge stays off.
   const live = connected && hostLive;
-  const subtitle = !connected
-    ? "Connecting…"
-    : live
-      ? `Live · ${LANGS[lang].en}`
-      : "Waiting for the service to start";
 
   // The emphasized line: the one whose audio is playing right now, or —
   // between clips / with audio off — simply the newest.
@@ -111,10 +106,6 @@ export function ViewerPage() {
             <span className="viewer-wordmark">Worship On Air</span>
           </div>
           <LiveBadge on={live} />
-        </div>
-        <div className="viewer-meta">
-          <h1>Live Sermon</h1>
-          <p>{subtitle}</p>
         </div>
         <LangSelect value={lang} onChange={setLang} />
       </header>
