@@ -22,4 +22,15 @@ export interface TtsMessage {
   rate?: number;
 }
 
-export type ServerMessage = TranscriptMessage | TranslationMessage | TtsMessage;
+export interface StatsMessage {
+  type: "stats";
+  total: number;
+  langs: Record<string, number>;
+  host: boolean; // a host is currently broadcasting
+}
+
+export type ServerMessage =
+  | TranscriptMessage
+  | TranslationMessage
+  | TtsMessage
+  | StatsMessage;

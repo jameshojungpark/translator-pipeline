@@ -73,9 +73,12 @@ async def test_broadcast_stats_counts_languages_excluding_monitors() -> None:
     room.add_client(es, "es")
     room.add_client(monitor, "all")
     await room.broadcast_stats()
-    expected = {"type": "stats", "total": 3, "langs": {"ko": 2, "es": 1}}
+    expected = {"type": "stats", "total": 3, "langs": {"ko": 2, "es": 1}, "host": False}
     assert monitor.received == [expected]
     assert ko1.received == [expected]
+    room.host_connected = True
+    await room.broadcast_stats()
+    assert monitor.received[-1]["host"] is True
 
 
 def test_wanted_langs_ignores_all_monitors() -> None:

@@ -15,7 +15,7 @@ export function ViewerPage() {
   const room = useMemo(() => new URLSearchParams(location.search).get("room") ?? "main", []);
   const [lang, setLang] = useLangParam();
   const [connected, setConnected] = useState(false);
-  const [statusText, setStatusText] = useState("Connecting…");
+  const [hostLive, setHostLive] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [sentences, dispatch] = useReducer(feedReducer, []);
   const [queue] = useState(() => new PlaybackQueue());
@@ -31,7 +31,6 @@ export function ViewerPage() {
     const socket = openRoomSocket(room, lang, {
       onStatus: (isConnected) => {
         setConnected(isConnected);
-        setStatusText(isConnected ? `Live · ${LANGS[lang].en}` : "Reconnecting…");
       },
       onMessage: (m) => {
         if (m.type === "transcript") {
@@ -50,6 +49,8 @@ export function ViewerPage() {
             onStart: () => dispatch({ type: "speaking", id: m.id, speaking: true }),
             onEnd: () => dispatch({ type: "speaking", id: m.id, speaking: false }),
           });
+        } else if (m.type === "stats") {
+          setHostLive(m.host);
         }
       },
     });
@@ -71,6 +72,15 @@ export function ViewerPage() {
     setAudioEnabled(true);
     setLang(code);
   };
+
+  // LIVE means a host is actually broadcasting, not merely that our socket
+  // is open — before the service starts the badge stays off.
+  const live = connected && hostLive;
+  const subtitle = !connected
+    ? "Connecting…"
+    : live
+      ? `Live · ${LANGS[lang].en}`
+      : "Waiting for the service to start";
 
   // The emphasized line: the one whose audio is playing right now, or —
   // between clips / with audio off — simply the newest.
@@ -98,11 +108,11 @@ export function ViewerPage() {
             </span>
             <span className="viewer-wordmark">Worship On Air</span>
           </div>
-          <LiveBadge on={connected} />
+          <LiveBadge on={live} />
         </div>
         <div className="viewer-meta">
           <h1>Live Sermon</h1>
-          <p>{statusText}</p>
+          <p>{subtitle}</p>
         </div>
         <LangSelect value={lang} onChange={setLang} />
       </header>
@@ -123,9 +133,11 @@ export function ViewerPage() {
 
       <div className="viewer-bottom">
         <div className="live-bar">
-          <Waveform active={connected} />
+          <Waveform active={live} />
           <div className="live-bar-status">
-            <strong>{connected ? "Translating live" : "Reconnecting…"}</strong>
+            <strong>
+              {!connected ? "Reconnecting…" : live ? "Translating live" : "Waiting for broadcast"}
+            </strong>
             <span>{autoScroll.enabled ? "Auto-scrolling · tap to pause" : "Paused · tap to resume"}</span>
           </div>
           {audioEnabled && <MuteButton muted={muted} onToggle={toggleMute} />}

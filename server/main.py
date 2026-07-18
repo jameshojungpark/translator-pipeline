@@ -245,6 +245,7 @@ async def ws_host(
     await websocket.accept()
     the_room.host_connected = True
     logger.info("host connected room=%s input_lang=%s", room, input_lang)
+    await the_room.broadcast_stats()
 
     session = HostSession(
         the_room,
@@ -272,6 +273,7 @@ async def ws_host(
         logger.info("host disconnected room=%s", room)
     finally:
         the_room.host_connected = False
+        await the_room.broadcast_stats()
         await session.close()
         if worker is not None:
             await worker

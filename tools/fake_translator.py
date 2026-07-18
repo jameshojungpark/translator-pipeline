@@ -176,6 +176,8 @@ async def run_feed(room: Room) -> None:
     """Loop the scripted sermon into a room until it empties."""
     sentence_id = 0
     logger.info("room=%s feed started", room.name)
+    room.host_connected = True  # the scripted feed plays the host's role
+    await room.broadcast_stats()
     try:
         while True:
             for entry in SCRIPT:
@@ -197,6 +199,8 @@ async def run_feed(room: Room) -> None:
                 sentence_id += 1
                 await asyncio.sleep(settings["interval"])
     finally:
+        room.host_connected = False
+        await room.broadcast_stats()
         logger.info("room=%s feed stopped", room.name)
 
 

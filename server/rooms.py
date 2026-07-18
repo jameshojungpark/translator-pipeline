@@ -45,10 +45,16 @@ class Room:
         return counts
 
     async def broadcast_stats(self) -> None:
-        """Push listener telemetry to everyone; the host console renders it."""
+        """Push room telemetry to everyone: listener counts and whether a
+        host is broadcasting (viewers gate their LIVE badge on it)."""
         counts = self.lang_counts()
         await self.broadcast(
-            {"type": "stats", "total": sum(counts.values()), "langs": counts}
+            {
+                "type": "stats",
+                "total": sum(counts.values()),
+                "langs": counts,
+                "host": self.host_connected,
+            }
         )
 
     async def broadcast(self, message: dict[str, Any], lang: str | None = None) -> None:
