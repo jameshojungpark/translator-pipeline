@@ -23,6 +23,12 @@
   --bar: #0f172a;
   --line: #eceef4;
 
+  /* Page + viewer surfaces (tokenized so dark mode can restyle them) */
+  --page-bg: #f6f7fb;
+  --viewer-bg: linear-gradient(180deg, #ffffff 0%, #fafbfd 42%, #f6f7fb 100%);
+  --feed-mask: #fbfcfe;
+  --overlay-scrim: rgba(15, 23, 42, 0.45);
+
   /* Caption fade ramp, oldest → newest settled line */
   --fade-old: #cbd2de;
   --fade-mid: #a9b2c2;
@@ -35,13 +41,55 @@
   --font-ui: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --font-caption: "Newsreader", Georgia, "Apple SD Gothic Neo", "Noto Sans KR", serif;
 }
+
+/* Dark reading surface. A pre-paint script in index.html stamps
+   data-theme on <html> from the saved choice (or the OS preference),
+   so this drives both the explicit toggle and first-load defaults. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #eef1f7;
+  --muted: #97a1b3;
+  --muted-2: #7c8698;
+  --chip-text: #b7bfcd;
+
+  --accent: #7c74f2;
+  --accent-2: #a5b4fc;
+  --accent-soft: rgba(124, 116, 242, 0.16);
+  --accent-light: #818cf8;
+  --accent-lighter: #a5b4fc;
+
+  --live-red: #f87171;
+  --live-red-text: #f87171;
+  --live-red-tint: rgba(248, 113, 113, 0.16);
+
+  --card: #171c28;
+  --chip: #222838;
+  --bar: #1c2231;
+  --line: #29303f;
+
+  --page-bg: #0c0e14;
+  --viewer-bg: linear-gradient(180deg, #14181f 0%, #101319 42%, #0c0e14 100%);
+  --feed-mask: #13171e;
+  --overlay-scrim: rgba(3, 5, 10, 0.6);
+
+  /* Fade ramp inverts: old lines sit dim, recent ones brighten toward --ink */
+  --fade-old: #454d5d;
+  --fade-mid: #626b7d;
+  --fade-recent: #939db0;
+
+  --shadow-logo: 0 2px 8px rgba(124, 116, 242, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-bar: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
 }
 body {
   font-family: var(--font-ui);
-  background: #f6f7fb;
+  background: var(--page-bg);
   color: var(--ink);
 }
 button {

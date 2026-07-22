@@ -5,6 +5,7 @@ import { AutoScrollButton, useAutoScroll } from "@/features/auto-scroll";
 import { LangOverlay, LangSelect, useLangParam } from "@/features/language-select";
 import { MuteButton, useMute } from "@/features/mute";
 import { TextSizeControl, useTextSize } from "@/features/text-size";
+import { ThemeToggle, useTheme } from "@/features/theme-toggle";
 import { openRoomSocket } from "@/shared/api";
 import { type LangCode } from "@/shared/config";
 import { PlaybackQueue } from "@/shared/lib/audio";
@@ -24,6 +25,7 @@ export function ViewerPage() {
   const feedRef = useRef<HTMLDivElement>(null);
   const autoScroll = useAutoScroll(feedRef, sentences);
   const [textSize, setTextSize] = useTextSize();
+  const [theme, toggleTheme] = useTheme();
 
   // Language switch reconnects the socket with the new lang and clears the
   // feed (old entries would be in the wrong language). No page reload, so an
@@ -105,7 +107,10 @@ export function ViewerPage() {
             </span>
             <span className="viewer-wordmark">Worship On Air</span>
           </div>
-          <LiveBadge on={live} />
+          <div className="viewer-topbar-actions">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <LiveBadge on={live} />
+          </div>
         </div>
         <LangSelect value={lang} onChange={setLang} />
       </header>
