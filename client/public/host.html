@@ -593,6 +593,11 @@ function connectHostSocket() {
       stop();
       return;
     }
+    if (event.code === 4404) {
+      setInfo(`Room "${room}" is not available on this server.`);
+      stop();
+      return;
+    }
     renderBadge();
     setTimeout(() => { if (live) connectHostSocket(); }, 2000);
   };

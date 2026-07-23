@@ -18,12 +18,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import Request
 
 from server import tts
 from server.glossary import LANGUAGES, SOURCE_LANGUAGES
-from server.rooms import Room, RoomManager
+from server.rooms import Room, RoomManager, canonical_room, parse_allowed_rooms
 from server.segmenter import SentenceSegmenter
 from server.stt import DeepgramTranscriber
 from server.translator import Translator
@@ -35,7 +36,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Live Sermon Translator")
-rooms = RoomManager()
+# ALLOWED_ROOMS (comma-separated) restricts which room names may be opened.
+# Unset = any room name is allowed (the historical behavior).
+_allowed_rooms = parse_allowed_rooms(os.environ.get("ALLOWED_ROOMS"))
+if _allowed_rooms:
+    logger.info("room allowlist active: %s", ", ".join(sorted(_allowed_rooms)))
+rooms = RoomManager(_allowed_rooms)
 _translators: dict[tuple[str, str], Translator] = {}  # (source, target) → Translator
 _synthesizers: dict[str, Synthesizer] = {}
 
@@ -237,6 +243,11 @@ async def ws_host(
     if input_lang not in SOURCE_LANGUAGES:
         logger.warning("host requested unsupported input_lang=%s; using en", input_lang)
         input_lang = "en"
+    room = canonical_room(room)
+    if not rooms.is_allowed(room):
+        logger.warning("host rejected: room=%s not in allowlist", room)
+        await websocket.close(code=4404, reason="unknown room")
+        return
     the_room = rooms.get_or_create(room)
     if the_room.host_connected:
         await websocket.close(code=4409, reason="room already has a host")
@@ -285,6 +296,11 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
     if lang != "all" and lang not in LANGUAGES:
         logger.warning("client requested unsupported lang=%s; serving ko", lang)
         lang = "ko"
+    room = canonical_room(room)
+    if not rooms.is_allowed(room):
+        logger.warning("client rejected: room=%s not in allowlist", room)
+        await websocket.close(code=4404, reason="unknown room")
+        return
     the_room = rooms.get_or_create(room)
     await websocket.accept()
     the_room.add_client(websocket, lang)
@@ -303,6 +319,60 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
         logger.info("client left room=%s (%d remain)", room, the_room.client_count)
         await the_room.broadcast_stats()
         rooms.cleanup(room)
+
+
+# Standalone page shown when someone opens a room that isn't on the allowlist.
+# Self-contained (no app assets load) and theme-aware, so a blocked room never
+# renders anything resembling the usable app.
+_ROOM_BLOCKED_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room unavailable</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; min-height: 100dvh; display: flex; align-items: center;
+    justify-content: center; padding: 24px; text-align: center;
+    font-family: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: #f6f7fb; color: #0f172a;
+  }
+  .box { max-width: 420px; }
+  h1 { font-size: 22px; font-weight: 680; letter-spacing: -0.4px; margin: 0 0 10px; }
+  p { font-size: 14px; line-height: 1.5; color: #64748b; margin: 0; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0c0e14; color: #eef1f7; }
+    p { color: #97a1b3; }
+  }
+</style>
+</head>
+<body>
+<div class="box">
+<h1>Room unavailable</h1>
+<p>This room isn't available on this server. Please check the link you were given.</p>
+</div>
+</body>
+</html>
+"""
+
+# HTML entry points whose ?room= is gated before the app is ever served.
+_GATED_PATHS = frozenset({"/", "/index.html", "/host", "/host.html"})
+
+
+@app.middleware("http")
+async def gate_disallowed_rooms(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Block the app's HTML pages for rooms outside the allowlist.
+
+    Rejecting only the WebSocket still let the full UI load and look usable;
+    this stops the page itself from being served, so a disallowed room is
+    unavailable "even at the root". Static assets and API routes are untouched.
+    """
+    if request.method in ("GET", "HEAD") and request.url.path in _GATED_PATHS:
+        room = canonical_room(request.query_params.get("room", "main"))
+        if not rooms.is_allowed(room):
+            return HTMLResponse(_ROOM_BLOCKED_PAGE, status_code=404)
+    return await call_next(request)
 
 
 @app.get("/health")
