@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 
 from server import tts
 from server.glossary import LANGUAGES, SOURCE_LANGUAGES
-from server.rooms import Room, RoomManager
+from server.rooms import Room, RoomManager, canonical_room, parse_allowed_rooms
 from server.segmenter import SentenceSegmenter
 from server.stt import DeepgramTranscriber
 from server.translator import Translator
@@ -35,7 +35,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Live Sermon Translator")
-rooms = RoomManager()
+# ALLOWED_ROOMS (comma-separated) restricts which room names may be opened.
+# Unset = any room name is allowed (the historical behavior).
+_allowed_rooms = parse_allowed_rooms(os.environ.get("ALLOWED_ROOMS"))
+if _allowed_rooms:
+    logger.info("room allowlist active: %s", ", ".join(sorted(_allowed_rooms)))
+rooms = RoomManager(_allowed_rooms)
 _translators: dict[tuple[str, str], Translator] = {}  # (source, target) → Translator
 _synthesizers: dict[str, Synthesizer] = {}
 
@@ -237,6 +242,11 @@ async def ws_host(
     if input_lang not in SOURCE_LANGUAGES:
         logger.warning("host requested unsupported input_lang=%s; using en", input_lang)
         input_lang = "en"
+    room = canonical_room(room)
+    if not rooms.is_allowed(room):
+        logger.warning("host rejected: room=%s not in allowlist", room)
+        await websocket.close(code=4404, reason="unknown room")
+        return
     the_room = rooms.get_or_create(room)
     if the_room.host_connected:
         await websocket.close(code=4409, reason="room already has a host")
@@ -285,6 +295,11 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
     if lang != "all" and lang not in LANGUAGES:
         logger.warning("client requested unsupported lang=%s; serving ko", lang)
         lang = "ko"
+    room = canonical_room(room)
+    if not rooms.is_allowed(room):
+        logger.warning("client rejected: room=%s not in allowlist", room)
+        await websocket.close(code=4404, reason="unknown room")
+        return
     the_room = rooms.get_or_create(room)
     await websocket.accept()
     the_room.add_client(websocket, lang)

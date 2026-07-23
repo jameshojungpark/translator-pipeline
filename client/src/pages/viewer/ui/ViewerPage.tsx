@@ -18,6 +18,7 @@ export function ViewerPage() {
   const [lang, setLang] = useLangParam();
   const [connected, setConnected] = useState(false);
   const [hostLive, setHostLive] = useState(false);
+  const [roomRejected, setRoomRejected] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [sentences, dispatch] = useReducer(feedReducer, []);
   const [queue] = useState(() => new PlaybackQueue());
@@ -32,9 +33,14 @@ export function ViewerPage() {
   // already-enabled AudioContext keeps working.
   useEffect(() => {
     dispatch({ type: "clear" });
+    setRoomRejected(false);
     const socket = openRoomSocket(room, lang, {
       onStatus: (isConnected) => {
         setConnected(isConnected);
+      },
+      onRejected: () => {
+        setConnected(false);
+        setRoomRejected(true);
       },
       onMessage: (m) => {
         if (m.type === "transcript") {
@@ -116,17 +122,29 @@ export function ViewerPage() {
       </header>
 
       <div className="viewer-feed-wrap">
-        <div className="viewer-feed-mask" />
-        <div className={`viewer-feed size-${textSize}`} ref={feedRef}>
-          {sentences.map((sentence, index) => (
-            <SentenceRow
-              key={index}
-              sentence={sentence}
-              active={index === activeIndex}
-              reading={!autoScroll.enabled}
-            />
-          ))}
-        </div>
+        {roomRejected ? (
+          <div className="viewer-notice">
+            <h2 className="viewer-notice-title">Room unavailable</h2>
+            <p className="viewer-notice-body">
+              The room <b>“{room}”</b> isn’t available on this server. Check the link
+              you were given and try again.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="viewer-feed-mask" />
+            <div className={`viewer-feed size-${textSize}`} ref={feedRef}>
+              {sentences.map((sentence, index) => (
+                <SentenceRow
+                  key={index}
+                  sentence={sentence}
+                  active={index === activeIndex}
+                  reading={!autoScroll.enabled}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="viewer-bottom">
@@ -139,7 +157,7 @@ export function ViewerPage() {
         </div>
       </div>
 
-      {!audioEnabled && <LangOverlay onSelect={chooseLangAndEnableAudio} />}
+      {!audioEnabled && !roomRejected && <LangOverlay onSelect={chooseLangAndEnableAudio} />}
     </div>
   );
 }

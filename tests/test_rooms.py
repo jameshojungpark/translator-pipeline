@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from server.rooms import Room, RoomManager
+from server.rooms import Room, RoomManager, canonical_room, parse_allowed_rooms
 
 
 class FakeClient:
@@ -87,6 +87,34 @@ def test_wanted_langs_ignores_all_monitors() -> None:
     room.add_client(FakeClient(), "fa")
     room.add_client(FakeClient(), "all")
     assert room.wanted_langs() == {"ko", "fa"}
+
+
+def test_canonical_room_normalizes_case_and_whitespace() -> None:
+    assert canonical_room("  Main ") == "main"
+    assert canonical_room("YOUTH") == "youth"
+
+
+def test_parse_allowed_rooms_splits_and_canonicalizes() -> None:
+    assert parse_allowed_rooms("main, Youth , SPANISH") == {"main", "youth", "spanish"}
+
+
+def test_parse_allowed_rooms_empty_when_unset_or_blank() -> None:
+    assert parse_allowed_rooms(None) == set()
+    assert parse_allowed_rooms("") == set()
+    assert parse_allowed_rooms("  , ,") == set()
+
+
+def test_is_allowed_unrestricted_when_no_allowlist() -> None:
+    manager = RoomManager()
+    assert manager.is_allowed("anything")
+    assert manager.is_allowed("literally-any-room")
+
+
+def test_is_allowed_restricts_to_allowlist_case_insensitively() -> None:
+    manager = RoomManager({"main", "youth"})
+    assert manager.is_allowed("main")
+    assert manager.is_allowed("  Youth ")
+    assert not manager.is_allowed("random")
 
 
 def test_manager_cleanup_only_removes_empty_rooms() -> None:

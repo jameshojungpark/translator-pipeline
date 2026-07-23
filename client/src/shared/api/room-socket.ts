@@ -3,7 +3,12 @@ import type { ServerMessage } from "./messages";
 export interface RoomSocketHandlers {
   onMessage: (message: ServerMessage) => void;
   onStatus: (connected: boolean) => void;
+  /** The server rejected this room (not on its allowlist). No reconnect follows. */
+  onRejected?: () => void;
 }
+
+/** Close code the server sends when a room name isn't allowed. */
+const ROOM_REJECTED_CODE = 4404;
 
 export interface RoomSocket {
   close: () => void;
@@ -30,9 +35,14 @@ export function openRoomSocket(
     ws = new WebSocket(`${proto}://${location.host}/ws/client?room=${room}&lang=${lang}`);
     ws.onopen = () => handlers.onStatus(true);
     ws.onmessage = (event) => handlers.onMessage(JSON.parse(event.data) as ServerMessage);
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (closed) return;
       handlers.onStatus(false);
+      if (event.code === ROOM_REJECTED_CODE) {
+        closed = true; // an unknown room won't become known by retrying
+        handlers.onRejected?.();
+        return;
+      }
       reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY_MS);
     };
   }

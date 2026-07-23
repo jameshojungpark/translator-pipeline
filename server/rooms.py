@@ -6,6 +6,26 @@ from typing import Any, Protocol
 logger = logging.getLogger(__name__)
 
 
+def canonical_room(name: str) -> str:
+    """Normalize a room name so capitalization/whitespace can't split a room.
+
+    "Main", " main " and "main" all resolve to the same room, and the same
+    canonical form is what the allowlist is checked against.
+    """
+    return name.strip().lower()
+
+
+def parse_allowed_rooms(raw: str | None) -> set[str]:
+    """Parse the ALLOWED_ROOMS env value into a set of canonical room names.
+
+    Comma-separated; blanks are ignored. An empty result (unset or all-blank)
+    means "no restriction" — any room name is allowed.
+    """
+    if not raw:
+        return set()
+    return {canonical_room(part) for part in raw.split(",") if part.strip()}
+
+
 class ClientSocket(Protocol):
     """Minimal interface a client connection must expose."""
 
@@ -81,8 +101,14 @@ class Room:
 
 
 class RoomManager:
-    def __init__(self) -> None:
+    def __init__(self, allowed: set[str] | None = None) -> None:
         self._rooms: dict[str, Room] = {}
+        # Canonical names that may be opened; empty set = unrestricted.
+        self.allowed: set[str] = allowed or set()
+
+    def is_allowed(self, name: str) -> bool:
+        """Whether a room may be opened. Always True when no allowlist is set."""
+        return not self.allowed or canonical_room(name) in self.allowed
 
     def get_or_create(self, name: str) -> Room:
         if name not in self._rooms:

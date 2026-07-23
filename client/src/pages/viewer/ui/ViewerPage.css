@@ -77,6 +77,32 @@
   --caption-scale: 1.2;
 }
 
+/* Shown in place of the feed when the server rejects the room name */
+.viewer-notice {
+  height: 100%;
+  max-width: 764px;
+  margin: 0 auto;
+  padding: 8px 32px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.viewer-notice-title {
+  font-size: 22px;
+  font-weight: 680;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+}
+.viewer-notice-body {
+  margin-top: 10px;
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 /* ── Bottom live bar ────────────────────────────────── */
 .viewer-bottom {
   flex-shrink: 0;
