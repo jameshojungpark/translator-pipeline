@@ -11,6 +11,7 @@ Endpoints:
 
 import asyncio
 import base64
+import json
 import logging
 import os
 
@@ -100,6 +101,49 @@ def get_synthesizer(lang: str) -> Synthesizer | None:
     return _synthesizers[lang]
 
 
+async def _handle_host_control(the_room: Room, raw: str) -> None:
+    """Handle a JSON text frame from the host connection.
+
+    The host stream is primarily binary audio, but the host app can also send
+    JSON control messages. Currently the only one is service metadata:
+        {"type": "service", "service": ..., "pastor": ..., "church": ...}
+    Fields may be sent partially (only what changed). Unknown or malformed
+    frames are logged and ignored so a bad frame never tears down the host.
+    """
+    try:
+        msg = json.loads(raw)
+    except (ValueError, TypeError):
+        logger.warning("host sent non-JSON text frame; ignoring")
+        return
+    if not isinstance(msg, dict):
+        logger.warning("host sent non-object JSON frame; ignoring")
+        return
+    if msg.get("type") == "service":
+        the_room.set_service_info(
+            service=msg.get("service"),
+            pastor=msg.get("pastor"),
+            church=msg.get("church"),
+        )
+        await the_room.broadcast(the_room.service_message())
+    else:
+        logger.warning("host sent unknown control type=%r; ignoring", msg.get("type"))
+
+class _NullTranscriber:
+    """Stand-in transcriber for running without a Deepgram key.
+
+    Lets the host connect and the rest of the app work (service info, stats,
+    viewer UI) when no speech-to-text is configured. Produces no transcripts.
+    """
+
+    async def start(self) -> None:
+        pass
+
+    async def send(self, chunk: bytes) -> None:
+        pass
+
+    async def stop(self) -> None:
+        pass
+
 class HostSession:
     """Pipeline for one host connection: STT → segmenter → translation queue.
 
@@ -121,9 +165,14 @@ class HostSession:
         self.input_lang = input_lang
         self.segmenter = SentenceSegmenter()
         self.sentence_queue: asyncio.Queue[tuple[int, str] | None] = asyncio.Queue()
-        self.transcriber = DeepgramTranscriber(
-            os.environ["DEEPGRAM_API_KEY"], self.on_transcript, input_lang=input_lang
-        )
+        api_key = os.environ.get("DEEPGRAM_API_KEY")
+        if api_key:
+            self.transcriber = DeepgramTranscriber(
+                api_key, self.on_transcript, input_lang=input_lang
+            )
+        else:
+            logger.warning("DEEPGRAM_API_KEY not set — transcription disabled")
+            self.transcriber = _NullTranscriber()
         self._next_id = 0
 
     async def on_transcript(self, text: str, is_final: bool) -> None:
@@ -258,18 +307,33 @@ async def ws_host(
     logger.info("host connected room=%s input_lang=%s", room, input_lang)
     await the_room.broadcast_stats()
 
+    def _try_translator(lang: str) -> Translator | None:
+        try:
+            return get_translator(lang, input_lang)
+        except RuntimeError as exc:
+            logger.warning("skipping translator lang=%s: %s", lang, exc)
+            return None
+
+    def _try_synthesizer(lang: str) -> Synthesizer | None:
+        try:
+            return get_synthesizer(lang)
+        except RuntimeError as exc:
+            logger.warning("skipping synthesizer lang=%s: %s", lang, exc)
+            return None
+
     session = HostSession(
         the_room,
         {
-            lang: get_translator(lang, input_lang)
+            lang: tr
             for lang in LANGUAGES
-            if lang != input_lang  # the speaker's language passes through
+            if lang != input_lang
+            if (tr := _try_translator(lang)) is not None
         },
         {
             lang: synth
             for lang in LANGUAGES
             if lang != input_lang
-            if (synth := get_synthesizer(lang)) is not None
+            if (synth := _try_synthesizer(lang)) is not None
         },
         input_lang=input_lang,
     )
@@ -278,8 +342,15 @@ async def ws_host(
         await session.transcriber.start()
         worker = asyncio.create_task(session.translation_worker())
         while True:
-            chunk = await websocket.receive_bytes()
-            await session.transcriber.send(chunk)
+            # The host stream is mostly binary audio, but may interleave JSON
+            # text frames (service metadata). Dispatch on the frame type.
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(message.get("code", 1000))
+            if (chunk := message.get("bytes")) is not None:
+                await session.transcriber.send(chunk)
+            elif (text := message.get("text")) is not None:
+                await _handle_host_control(the_room, text)
     except WebSocketDisconnect:
         logger.info("host disconnected room=%s", room)
     finally:
@@ -308,6 +379,9 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
         "client joined room=%s lang=%s (%d total)", room, lang, the_room.client_count
     )
     await the_room.broadcast_stats()
+    # Give the new viewer the current service metadata immediately, so someone
+    # joining mid-service sees the title without waiting for the host to retype.
+    await websocket.send_json(the_room.service_message())
     try:
         # Clients are receive-only; we read just to detect disconnect.
         while True:

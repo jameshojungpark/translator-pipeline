@@ -37,6 +37,7 @@ class Room:
         self.name = name
         self.host_connected: bool = False
         self._clients: dict[ClientSocket, str] = {}  # socket -> language ("all" = every language)
+        self.service_info: dict[str, str] = {"service": "","pastor": "","church": ""}
 
     @property
     def client_count(self) -> int:
@@ -47,6 +48,17 @@ class Room:
 
     def remove_client(self, client: ClientSocket) -> None:
         self._clients.pop(client, None)
+
+    def set_service_info(self, service: str | None = None, pastor: str | None = None, church: str | None = None,) -> None:
+        if service is not None:
+            self.service_info["service"] = str(service)
+        if pastor is not None:
+            self.service_info["pastor"] = str(pastor)
+        if church is not None:
+            self.service_info["church"] = str(church)
+
+    def service_message(self) -> dict[str, Any]:
+        return {"type": "service", **self.service_info}
 
     def wanted_langs(self) -> set[str]:
         """Languages at least one viewer selected ("all" monitors don't count).

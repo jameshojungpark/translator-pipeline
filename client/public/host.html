@@ -178,6 +178,29 @@
     background: var(--red-tint); border: 1px solid var(--red-border); color: var(--red-text);
   }
 
+  /* ── Service info bar ────────────────────────────── */
+  .service-bar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;padding: 14px 24px; 
+    background: var(--card); border-bottom: 1px solid var(--line);
+  }
+  .service-field {
+    flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; padding: 8px 14px; 
+    border-radius: 11px; background: var(--card-subtle); border: 1px solid var(--line); min-width: 0;
+  }
+  .service-field label {
+    font-size: 10.5px; font-weight: 700; color: var(--muted-2); letter-spacing: 0.5px;text-transform: uppercase;
+  }
+  .service-field input {
+    font-family: var(--font-ui); font-size: 13px; font-weight: 650; color: var(--ink);
+    border: none; background: transparent; padding: 0; min-width: 0; width: 100%; box-sizing: border-box;
+  }
+  .service-field input::placeholder {
+    color: var(--muted-2); font-weight: 500;
+  }
+  .service-field input:focus {
+    outline: none;
+  }
+
   /* ── Live transcript card (read-only monitor) ────── */
   .transcript-card {
     flex: 1; display: flex; flex-direction: column; min-height: 0;
@@ -326,6 +349,20 @@
 
 <div class="console-body">
   <main class="work">
+    <section class="service-bar">
+      <div class="service-field">
+        <label for="serviceInput">Service</label>
+        <input type="text" id="serviceInput" placeholder="e.g. Sunday Service"/>
+      </div>
+      <div class="service-field">
+        <label for="pastorInput">Pastor</label>
+        <input type="text" id="pastorInput" placeholder="e.g. James Carter"/>
+      </div>
+      <div class="service-field">
+        <label for="churchInput">Church</label>
+        <input type="text" id="churchInput" placeholder="e.g. Grace Community Church"/>
+      </div>
+    </section>
     <div id="info" hidden></div>
 
     <section class="transcript-card">
@@ -424,8 +461,27 @@ inputSel.onchange = () => {
   history.replaceState(null, "", `?${params.toString()}`);
 };
 
-// ---- input microphone picker ----
+// ---- service metadata → host socket ----
+const serviceInputs = {
+  service: document.getElementById("serviceInput"),
+  pastor: document.getElementById("pastorInput"),
+  church: document.getElementById("churchInput"),
+};
 
+function sendServiceInfo() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "service",
+        service: serviceInputs.service.value,
+        pastor: serviceInputs.pastor.value,
+        church: serviceInputs.church.value,
+      }),
+    );
+  }
+}
+
+// ---- input microphone picker ----
 const MIC_KEY = "woaf-host-mic";
 
 async function refreshMics() {
@@ -583,6 +639,7 @@ function connectHostSocket() {
     connected = true;
     renderBadge();
     setInfo("");
+    sendServiceInfo();
   };
   ws.onclose = (event) => {
     ws = null;
