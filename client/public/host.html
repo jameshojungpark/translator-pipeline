@@ -685,7 +685,10 @@ function stop() {
   live = false;
   connected = false;
   clearInterval(timer);
-  if (ws) { ws.close(1000); ws = null; }
+  serviceInputs.service.value = "";
+  serviceInputs.pastor.value  = "";
+  serviceInputs.church.value  = "";
+  if (ws) { sendServiceInfo(); ws.close(1000); ws = null; }
   if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
   if (ctx) { ctx.close(); ctx = null; }
   renderMeter(0);
