@@ -20,7 +20,7 @@
 
   --card: #ffffff;
   --chip: #f4f5fa;
-  --bar: #0f172a;
+  --bar: #ffffff;
   --line: #eceef4;
 
   /* Page + viewer surfaces (tokenized so dark mode can restyle them) */
