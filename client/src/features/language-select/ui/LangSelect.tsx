@@ -4,8 +4,9 @@ import { LANG_CODES, LANGS, langLabel, type LangCode } from "@/shared/config";
 import "./LangSelect.css";
 
 /**
- * "Translating to" pill. A transparent native <select> covers the whole
- * card, so tapping anywhere opens the platform language picker.
+ * "Translating to" pill with a custom dropdown menu. Built as a styled
+ * button + listbox rather than a native <select> so the menu matches the
+ * app's visual design.
  */
 export function LangSelect({
   value,
@@ -37,9 +38,15 @@ export function LangSelect({
         aria-expanded={open}
       >
         Change
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          className="lang-pill-caret"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
           <path d="m6 9 6 6 6-6" />
-        </svg>
+        </svg>  
       </button>
 
       {open && (
@@ -53,6 +60,15 @@ export function LangSelect({
               onClick={() => { onChange(code); setOpen(false); }}
             >
               {langLabel(LANGS[code])}
+              <span className="lang-menu-check" aria-hidden="true">
+                {code === value && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.4"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </span> 
             </li>
           ))}
         </ul>

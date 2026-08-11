@@ -69,6 +69,10 @@
   color: #ffffff;
 }
 
+.lang-pill-caret {
+  transition: transform 0.18s ease;
+}
+
 .lang-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -79,7 +83,7 @@
   padding: 6px;
   list-style: none;
   background: var(--card);
-  border: 1px solid var(--line);   /* YOUR border color now */
+  border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow-bar);
   max-height: 280px;
@@ -92,6 +96,16 @@
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lang-menu-check {
+  display: inline-flex;
+  width: 14px;
+  flex: 0 0 14px;
 }
 
 .lang-menu-item:hover {
