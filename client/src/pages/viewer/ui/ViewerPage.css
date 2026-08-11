@@ -111,6 +111,7 @@
   margin: 0 auto;
   padding: 14px 22px calc(env(safe-area-inset-bottom, 0px) + 14px);
 }
+
 .live-bar {
   display: flex;
   align-items: center;
@@ -118,9 +119,18 @@
   gap: 13px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: var(--bar);
+  /* subtle top-lit gradient with a hint of indigo instead of flat white */
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bar) 94%, var(--accent) 6%) 0%,
+      var(--bar) 100%
+    );
+  /* hairline edge tinted toward the accent so it doesn't rely on shadow alone */
+  border: 1px solid color-mix(in srgb, var(--line) 65%, var(--accent) 35%);
   box-shadow: var(--shadow-bar);
 }
+
 .live-bar-actions {
   display: flex;
   align-items: center;
