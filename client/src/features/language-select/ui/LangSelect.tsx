@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LANG_CODES, LANGS, langLabel, type LangCode } from "@/shared/config";
 
 import "./LangSelect.css";
@@ -13,6 +14,8 @@ export function LangSelect({
   value: LangCode;
   onChange: (code: LangCode) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="lang-pill">
       <span className="lang-pill-icon" aria-hidden="true">
@@ -26,25 +29,34 @@ export function LangSelect({
         <span className="lang-pill-overline">Translating to</span>
         <span className="lang-pill-value">{LANGS[value].label}</span>
       </span>
-      <span className="lang-pill-chip">
+      <button
+        type="button"
+        className="lang-pill-chip"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
         Change
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m6 9 6 6 6-6" />
         </svg>
-      </span>
-      <select
-        className="lang-pill-select"
-        title="Language"
-        aria-label="Translation language"
-        value={value}
-        onChange={(event) => onChange(event.target.value as LangCode)}
-      >
-        {LANG_CODES.map((code) => (
-          <option key={code} value={code}>
-            {langLabel(LANGS[code])}
-          </option>
-        ))}
-      </select>
+      </button>
+
+      {open && (
+        <ul className="lang-menu" role="listbox">
+          {LANG_CODES.map((code) => (
+            <li
+              key={code}
+              role="option"
+              aria-selected={code === value}
+              className={`lang-menu-item ${code === value ? "is-selected" : ""}`}
+              onClick={() => { onChange(code); setOpen(false); }}
+            >
+              {langLabel(LANGS[code])}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
