@@ -47,6 +47,23 @@
   color: var(--ink);
   letter-spacing: -0.2px;
 }
+.viewer-service {
+  margin-top: 8px;
+}
+.viewer-service-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.viewer-service-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
 /* ── Caption feed ───────────────────────────────────── */
 .viewer-feed-wrap {
   flex: 1;

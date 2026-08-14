@@ -11,6 +11,7 @@ Endpoints:
 
 import asyncio
 import base64
+import json
 import logging
 import os
 
@@ -98,6 +99,34 @@ def get_synthesizer(lang: str) -> Synthesizer | None:
             speed=_tts_speed(lang),
         )
     return _synthesizers[lang]
+
+
+async def _handle_host_control(the_room: Room, raw: str) -> None:
+    """Handle a JSON text frame from the host connection.
+
+    The host stream is primarily binary audio, but the host app can also send
+    JSON control messages. Currently the only one is service metadata:
+        {"type": "service", "service": ..., "pastor": ..., "church": ...}
+    Fields may be sent partially (only what changed). Unknown or malformed
+    frames are logged and ignored so a bad frame never tears down the host.
+    """
+    try:
+        msg = json.loads(raw)
+    except (ValueError, TypeError):
+        logger.warning("host sent non-JSON text frame; ignoring")
+        return
+    if not isinstance(msg, dict):
+        logger.warning("host sent non-object JSON frame; ignoring")
+        return
+    if msg.get("type") == "service":
+        the_room.set_service_info(
+            service=msg.get("service"),
+            pastor=msg.get("pastor"),
+            church=msg.get("church"),
+        )
+        await the_room.broadcast(the_room.service_message())
+    else:
+        logger.warning("host sent unknown control type=%r; ignoring", msg.get("type"))
 
 
 class HostSession:
@@ -263,7 +292,7 @@ async def ws_host(
         {
             lang: get_translator(lang, input_lang)
             for lang in LANGUAGES
-            if lang != input_lang  # the speaker's language passes through
+            if lang != input_lang
         },
         {
             lang: synth
@@ -278,8 +307,15 @@ async def ws_host(
         await session.transcriber.start()
         worker = asyncio.create_task(session.translation_worker())
         while True:
-            chunk = await websocket.receive_bytes()
-            await session.transcriber.send(chunk)
+            # The host stream is mostly binary audio, but may interleave JSON
+            # text frames (service metadata). Dispatch on the frame type.
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(message.get("code", 1000))
+            if (chunk := message.get("bytes")) is not None:
+                await session.transcriber.send(chunk)
+            elif (text := message.get("text")) is not None:
+                await _handle_host_control(the_room, text)
     except WebSocketDisconnect:
         logger.info("host disconnected room=%s", room)
     finally:
@@ -308,6 +344,9 @@ async def ws_client(websocket: WebSocket, room: str = "main", lang: str = "ko") 
         "client joined room=%s lang=%s (%d total)", room, lang, the_room.client_count
     )
     await the_room.broadcast_stats()
+    # Give the new viewer the current service metadata immediately, so someone
+    # joining mid-service sees the title without waiting for the host to retype.
+    await websocket.send_json(the_room.service_message())
     try:
         # Clients are receive-only; we read just to detect disconnect.
         while True:
