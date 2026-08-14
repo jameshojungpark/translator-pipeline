@@ -128,21 +128,6 @@ async def _handle_host_control(the_room: Room, raw: str) -> None:
     else:
         logger.warning("host sent unknown control type=%r; ignoring", msg.get("type"))
 
-class _NullTranscriber:
-    """Stand-in transcriber for running without a Deepgram key.
-
-    Lets the host connect and the rest of the app work (service info, stats,
-    viewer UI) when no speech-to-text is configured. Produces no transcripts.
-    """
-
-    async def start(self) -> None:
-        pass
-
-    async def send(self, chunk: bytes) -> None:
-        pass
-
-    async def stop(self) -> None:
-        pass
 
 class HostSession:
     """Pipeline for one host connection: STT → segmenter → translation queue.
@@ -165,14 +150,9 @@ class HostSession:
         self.input_lang = input_lang
         self.segmenter = SentenceSegmenter()
         self.sentence_queue: asyncio.Queue[tuple[int, str] | None] = asyncio.Queue()
-        api_key = os.environ.get("DEEPGRAM_API_KEY")
-        if api_key:
-            self.transcriber = DeepgramTranscriber(
-                api_key, self.on_transcript, input_lang=input_lang
-            )
-        else:
-            logger.warning("DEEPGRAM_API_KEY not set — transcription disabled")
-            self.transcriber = _NullTranscriber()
+        self.transcriber = DeepgramTranscriber(
+            os.environ["DEEPGRAM_API_KEY"], self.on_transcript, input_lang=input_lang
+        )
         self._next_id = 0
 
     async def on_transcript(self, text: str, is_final: bool) -> None:
@@ -307,33 +287,18 @@ async def ws_host(
     logger.info("host connected room=%s input_lang=%s", room, input_lang)
     await the_room.broadcast_stats()
 
-    def _try_translator(lang: str) -> Translator | None:
-        try:
-            return get_translator(lang, input_lang)
-        except RuntimeError as exc:
-            logger.warning("skipping translator lang=%s: %s", lang, exc)
-            return None
-
-    def _try_synthesizer(lang: str) -> Synthesizer | None:
-        try:
-            return get_synthesizer(lang)
-        except RuntimeError as exc:
-            logger.warning("skipping synthesizer lang=%s: %s", lang, exc)
-            return None
-
     session = HostSession(
         the_room,
         {
-            lang: tr
+            lang: get_translator(lang, input_lang)
             for lang in LANGUAGES
             if lang != input_lang
-            if (tr := _try_translator(lang)) is not None
         },
         {
             lang: synth
             for lang in LANGUAGES
             if lang != input_lang
-            if (synth := _try_synthesizer(lang)) is not None
+            if (synth := get_synthesizer(lang)) is not None
         },
         input_lang=input_lang,
     )
