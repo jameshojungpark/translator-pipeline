@@ -23,7 +23,18 @@ export const SentenceRow = memo(function SentenceRow({
   const pending = sentence.translation === null;
   return (
     <div className={`sentence${active ? " active" : ""}${reading ? " reading" : ""}`}>
-      {sentence.source && <div className="sentence-source">{sentence.source}</div>}
+      {sentence.source && (
+        <div className="sentence-source">
+          <svg className="sentence-source-icon" width="12" height="12" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+              strokeLinejoin="round" aria-hidden="true">
+            <rect x="9" y="2" width="6" height="11" rx="3" />
+            <path d="M5 10a7 7 0 0 0 14 0" />
+            <path d="M12 17v4" />
+          </svg>
+          {sentence.source}
+        </div>
+      )}
       <div className="sentence-target-row">
         {/* dir="auto": Farsi is right-to-left */}
         <div className="sentence-target" dir="auto">
