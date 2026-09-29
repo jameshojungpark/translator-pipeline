@@ -139,7 +139,6 @@ export function ViewerPage() {
                   key={index}
                   sentence={sentence}
                   active={index === activeIndex}
-                  reading={!autoScroll.enabled}
                 />
               ))}
             </div>

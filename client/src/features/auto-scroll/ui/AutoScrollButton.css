@@ -1,22 +1,55 @@
 .auto-scroll-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
+  gap: 8px;
   height: 36px;
-  border-radius: 50%;
+  padding: 0 8px 0 12px;
+  border-radius: 999px;
   border: 0;
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--muted-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 150ms ease;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 .auto-scroll-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+.auto-scroll-btn[aria-checked="true"] {
+  color: #fff;
+}
+.auto-scroll-track {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background-color 150ms ease;
+}
+.auto-scroll-btn[aria-checked="true"] .auto-scroll-track {
+  background: var(--accent);
+}
+.auto-scroll-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 150ms ease;
+}
+.auto-scroll-btn[aria-checked="true"] .auto-scroll-thumb {
+  transform: translateX(12px);
+}
 @media (prefers-reduced-motion: reduce) {
-  .auto-scroll-btn {
+  .auto-scroll-btn,
+  .auto-scroll-track,
+  .auto-scroll-thumb {
     transition: none;
   }
 }

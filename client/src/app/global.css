@@ -29,11 +29,6 @@
   --feed-mask: #fbfcfe;
   --overlay-scrim: rgba(15, 23, 42, 0.45);
 
-  /* Caption fade ramp, oldest → newest settled line */
-  --fade-old: #cbd2de;
-  --fade-mid: #a9b2c2;
-  --fade-recent: #7b869a;
-
   --shadow-logo: 0 2px 6px rgba(79, 70, 229, 0.35);
   --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-bar: 0 8px 24px rgba(15, 23, 42, 0.22);
@@ -72,11 +67,6 @@
   --viewer-bg: linear-gradient(180deg, #14181f 0%, #101319 42%, #0c0e14 100%);
   --feed-mask: #13171e;
   --overlay-scrim: rgba(3, 5, 10, 0.6);
-
-  /* Fade ramp inverts: old lines sit dim, recent ones brighten toward --ink */
-  --fade-old: #454d5d;
-  --fade-mid: #626b7d;
-  --fade-recent: #939db0;
 
   --shadow-logo: 0 2px 8px rgba(124, 116, 242, 0.4);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);

@@ -6,23 +6,20 @@ import "./SentenceRow.css";
 
 /**
  * One caption line: the original-language transcript above its translation.
- * The active line (the one being voiced right now, or the newest) is
- * emphasized with an indigo rule and a blinking caret; settled lines fade
- * progressively via CSS. `reading` (feed scrolled back) lifts the fade so
- * past lines are fully legible.
+ * Every line renders at the same size and color; the active line (the one
+ * being voiced right now, or the newest) is marked with an indigo rule and
+ * a blinking caret.
  */
 export const SentenceRow = memo(function SentenceRow({
   sentence,
   active,
-  reading,
 }: {
   sentence: Sentence;
   active: boolean;
-  reading: boolean;
 }) {
   const pending = sentence.translation === null;
   return (
-    <div className={`sentence${active ? " active" : ""}${reading ? " reading" : ""}`}>
+    <div className={`sentence${active ? " active" : ""}`}>
       {sentence.source && <div className="sentence-source">{sentence.source}</div>}
       <div className="sentence-target-row">
         {/* dir="auto": Farsi is right-to-left */}

@@ -1,39 +1,19 @@
-/* Reading feed: serif captions that fade as they age. Base style is the
-   oldest tier; the two newest settled lines step up in size and darkness,
-   and the active line carries the indigo rule + caret. */
+/* Reading feed: serif captions at one fixed size and color — lines do not
+   shrink or fade as they age. The active line is marked by the indigo rule
+   + caret only. */
 .sentence {
   margin: 0 0 20px;
   font-family: var(--font-caption);
   font-weight: 400;
-  font-size: calc(19px * var(--caption-scale, 1));
-  line-height: 1.5;
-  color: var(--fade-old);
-  animation: sentence-in 280ms ease-out;
-  transition: color 300ms ease, font-size 300ms ease;
-}
-.sentence:nth-last-child(3) {
-  font-size: calc(20px * var(--caption-scale, 1));
-  color: var(--fade-mid);
-}
-.sentence:nth-last-child(2),
-.sentence:last-child {
   font-size: calc(21px * var(--caption-scale, 1));
-  color: var(--fade-recent);
+  line-height: 1.5;
+  color: var(--ink);
+  animation: sentence-in 280ms ease-out;
 }
 .sentence.active {
-  font-size: calc(27px * var(--caption-scale, 1));
-  line-height: 1.42;
-  font-weight: 500;
-  letter-spacing: -0.2px;
-  color: var(--ink);
   border-left: 3px solid var(--accent);
   padding-left: 15px;
   margin-left: -3px;
-}
-/* Reading back (auto-scroll paused): lift the fade so history is legible.
-   Sizes keep their ramp; only color normalizes. */
-.sentence.reading {
-  color: var(--ink);
 }
 @keyframes sentence-in {
   from {
@@ -52,7 +32,7 @@
 .sentence-caret {
   display: inline-block;
   width: 2px;
-  height: calc(26px * var(--caption-scale, 1));
+  height: calc(22px * var(--caption-scale, 1));
   background: var(--accent);
   vertical-align: -4px;
   margin-left: 3px;
@@ -68,8 +48,7 @@
   }
 }
 /* Original-language transcript above each translation — tucked close to
-   its own line (well inside the 20px sentence gap). Settled lines inherit
-   their caption's fade color so it ages with the line. */
+   its own line (well inside the 20px sentence gap). */
 .sentence-source {
   margin-bottom: 4px;
   font-family: var(--font-ui);
@@ -77,12 +56,8 @@
   line-height: 1.4;
   font-weight: 400;
   font-style: italic;
-  color: inherit;
-  letter-spacing: 0;
-}
-.sentence.active .sentence-source,
-.sentence.reading .sentence-source {
   color: var(--muted-2);
+  letter-spacing: 0;
 }
 /* Scripture citation chip */
 .sentence-ref {
@@ -125,7 +100,6 @@
 @media (prefers-reduced-motion: reduce) {
   .sentence {
     animation: none;
-    transition: none;
   }
   .sentence-caret,
   .sentence-pending-dots i {
