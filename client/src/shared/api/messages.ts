@@ -29,8 +29,16 @@ export interface StatsMessage {
   host: boolean; // a host is currently broadcasting
 }
 
+export interface ServiceMessage {
+  type: "service";
+  service?: string;
+  pastor?: string;
+  church?: string;
+}
+
 export type ServerMessage =
   | TranscriptMessage
   | TranslationMessage
   | TtsMessage
-  | StatsMessage;
+  | StatsMessage
+  | ServiceMessage;

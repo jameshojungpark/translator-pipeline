@@ -59,6 +59,11 @@
   color: var(--muted-2);
   letter-spacing: 0;
 }
+.sentence-source-icon {
+  vertical-align: -1px;
+  margin-right: 0.35em;
+  opacity: 0.55;
+}
 /* Scripture citation chip */
 .sentence-ref {
   font-family: var(--font-ui);

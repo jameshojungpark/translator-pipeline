@@ -6,8 +6,8 @@
   padding: 0 8px 0 12px;
   border-radius: 999px;
   border: 0;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--muted-2);
+  background: rgba(95, 95, 95, 0.2);
+  color: var(--muted);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -17,17 +17,17 @@
   transition: background-color 150ms ease, color 150ms ease;
 }
 .auto-scroll-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(95, 95, 95, 0.28);
 }
 .auto-scroll-btn[aria-checked="true"] {
-  color: #fff;
+  color: var(--ink);
 }
 .auto-scroll-track {
   position: relative;
   width: 30px;
   height: 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(95, 95, 95, 0.3);
   transition: background-color 150ms ease;
 }
 .auto-scroll-btn[aria-checked="true"] .auto-scroll-track {

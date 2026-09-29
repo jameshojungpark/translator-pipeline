@@ -15,6 +15,7 @@ import "./ViewerPage.css";
 
 export function ViewerPage() {
   const room = useMemo(() => new URLSearchParams(location.search).get("room") ?? "main", []);
+  const [serviceInfo, setServiceInfo] = useState({ service: "", pastor: "", church: "" });
   const [lang, setLang] = useLangParam();
   const [connected, setConnected] = useState(false);
   const [hostLive, setHostLive] = useState(false);
@@ -61,6 +62,12 @@ export function ViewerPage() {
           });
         } else if (m.type === "stats") {
           setHostLive(m.host);
+        } else if (m.type === "service") {
+          setServiceInfo({
+            service: m.service ?? "",
+            pastor: m.pastor ?? "",
+            church: m.church ?? "",
+          });
         }
       },
     });
@@ -118,6 +125,17 @@ export function ViewerPage() {
             <LiveBadge on={live} />
           </div>
         </div>
+
+        {serviceInfo.service && (
+          <div className="viewer-service">
+            <h1 className="viewer-service-title">{serviceInfo.service}</h1>
+            {serviceInfo.pastor && serviceInfo.church && (
+              <p className="viewer-service-subtitle">
+                {`Pastor ${serviceInfo.pastor} · ${serviceInfo.church}`}
+              </p>
+            )}
+          </div>
+        )}
         <LangSelect value={lang} onChange={setLang} />
       </header>
 

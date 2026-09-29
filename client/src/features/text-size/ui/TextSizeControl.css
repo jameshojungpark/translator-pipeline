@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(95, 95, 95, 0.2);
   padding: 2px;
   flex-shrink: 0;
 }
@@ -15,7 +15,7 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--muted-2);
+  color: var(--muted);
   font-weight: 650;
   cursor: pointer;
   transition: background-color 150ms ease, color 150ms ease;
@@ -30,7 +30,7 @@
   font-size: 16px;
 }
 .text-size-btn.on {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--accent);
   color: #fff;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { LANG_CODES, LANGS, langLabel, type LangCode } from "@/shared/config";
 
 import "./LangSelect.css";
 
 /**
- * "Translating to" pill. A transparent native <select> covers the whole
- * card, so tapping anywhere opens the platform language picker.
+ * "Translating to" pill with a custom dropdown menu. Built as a styled
+ * button + listbox rather than a native <select> so the menu matches the
+ * app's visual design.
  */
 export function LangSelect({
   value,
@@ -13,6 +15,8 @@ export function LangSelect({
   value: LangCode;
   onChange: (code: LangCode) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="lang-pill">
       <span className="lang-pill-icon" aria-hidden="true">
@@ -26,25 +30,49 @@ export function LangSelect({
         <span className="lang-pill-overline">Translating to</span>
         <span className="lang-pill-value">{LANGS[value].label}</span>
       </span>
-      <span className="lang-pill-chip">
-        Change
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </span>
-      <select
-        className="lang-pill-select"
-        title="Language"
-        aria-label="Translation language"
-        value={value}
-        onChange={(event) => onChange(event.target.value as LangCode)}
+      <button
+        type="button"
+        className="lang-pill-chip"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
-        {LANG_CODES.map((code) => (
-          <option key={code} value={code}>
-            {langLabel(LANGS[code])}
-          </option>
-        ))}
-      </select>
+        Change
+        <svg
+          width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          className="lang-pill-caret"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>  
+      </button>
+
+      {open && (
+        <ul className="lang-menu" role="listbox">
+          {LANG_CODES.map((code) => (
+            <li
+              key={code}
+              role="option"
+              aria-selected={code === value}
+              className={`lang-menu-item ${code === value ? "is-selected" : ""}`}
+              onClick={() => { onChange(code); setOpen(false); }}
+            >
+              {langLabel(LANGS[code])}
+              <span className="lang-menu-check" aria-hidden="true">
+                {code === value && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.4"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </span> 
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
