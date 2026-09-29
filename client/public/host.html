@@ -33,8 +33,6 @@
     --line-mid: #e5e8f0;
     --line-row: #eef0f6;
     --line-dash: #c7cbd8;
-    --fade-old: #b6becc;
-    --fade-mid: #8592a6;
     --font-ui: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     --font-transcript: "Newsreader", Georgia, serif;
   }
@@ -209,14 +207,14 @@
     padding-bottom: 16px;
     border-bottom: 1px solid var(--line-soft);
   }
+  /* One fixed size and color for every line — no fade ramp as lines age.
+     Only the caret marks the line currently being spoken. */
   .line-src {
     font-family: var(--font-transcript);
-    font-size: 18px; line-height: 1.5; font-weight: 400; color: var(--fade-old);
+    font-size: 19px; line-height: 1.5; font-weight: 400; color: var(--ink);
   }
-  .line:nth-last-child(2) .line-src { font-size: 19px; color: var(--fade-mid); }
-  .line:last-child .line-src { font-size: 24px; line-height: 1.45; font-weight: 500; color: var(--ink); }
   .line:last-child .line-src::after {
-    content: ""; display: inline-block; width: 2px; height: 23px;
+    content: ""; display: inline-block; width: 2px; height: 19px;
     background: var(--accent); margin-left: 3px; vertical-align: -4px;
     animation: caret 1s step-end infinite;
   }
